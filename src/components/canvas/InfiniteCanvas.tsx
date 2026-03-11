@@ -37,6 +37,7 @@ export function InfiniteCanvas() {
 
   const [tempConnection, setTempConnection] = useState<{ fromX: number; fromY: number; toX: number; toY: number } | null>(null);
   const connectionDragRef = useRef<{ nodeId: string; portId: string } | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
 
@@ -132,6 +133,7 @@ export function InfiniteCanvas() {
 
   const resetConnectionDrag = useCallback(() => {
     connectionDragRef.current = null;
+    setIsConnecting(false);
     setTempConnection(null);
     setHighlightedTargetHandleId(null);
   }, []);
@@ -171,7 +173,7 @@ export function InfiniteCanvas() {
   }, [finishConnectionDrag]);
 
   useEffect(() => {
-    const isActive = Boolean(draggingNodeId || connectionDragRef.current || isPanning);
+    const isActive = Boolean(draggingNodeId || isConnecting || isPanning);
     if (!isActive) return;
 
     const handleWindowMouseMove = (e: MouseEvent) => handleMouseMove(e.clientX, e.clientY);
@@ -188,7 +190,7 @@ export function InfiniteCanvas() {
       window.removeEventListener('mousemove', handleWindowMouseMove);
       window.removeEventListener('mouseup', handleWindowMouseUp);
     };
-  }, [draggingNodeId, finishConnectionDrag, handleMouseMove, isPanning]);
+  }, [draggingNodeId, isConnecting, finishConnectionDrag, handleMouseMove, isPanning]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
@@ -216,6 +218,7 @@ export function InfiniteCanvas() {
   const handlePortDragStart = useCallback((nodeId: string, portId: string) => {
     if (activeTool === 'hand') return;
     connectionDragRef.current = { nodeId, portId };
+    setIsConnecting(true);
     const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
     if (!sourceNode) return;
 

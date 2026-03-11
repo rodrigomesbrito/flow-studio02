@@ -130,10 +130,10 @@ export function ConnectionLines({ connections, nodes, tempConnection, selectedCo
     <svg
       style={{
         position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
+        top: -10000,
+        left: -10000,
+        width: 20000,
+        height: 20000,
         pointerEvents: 'none',
         overflow: 'visible',
       }}
