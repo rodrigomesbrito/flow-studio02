@@ -16,6 +16,14 @@ export function InfiniteCanvas() {
     undo, redo, zoomIn, zoomOut, resetView,
   } = useCanvasState();
 
+  const { registerAddNode, unregisterAddNode } = useCanvasTools();
+
+  // Register addNode for the sidebar tools
+  useEffect(() => {
+    registerAddNode(addNode);
+    return () => unregisterAddNode();
+  }, [addNode, registerAddNode, unregisterAddNode]);
+
   const canvasRef = useRef<HTMLDivElement>(null);
   const [activeTool, setActiveTool] = useState<CanvasTool>('cursor');
   const [isPanning, setIsPanning] = useState(false);
