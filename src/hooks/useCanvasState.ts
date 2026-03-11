@@ -63,7 +63,7 @@ export function useCanvasState() {
       return nextNodes;
     });
 
-    setSelectedNodeId(node.id);
+    setSelectedNodeIds(new Set([node.id]));
   }, [connections, offset.x, offset.y, pushHistory, zoom]);
 
   const updateNode = useCallback((id: string, updates: Partial<CanvasNode>) => {
