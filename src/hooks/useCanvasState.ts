@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { CanvasNode, Connection, Position, NodeType } from '@/types/canvas';
 
+const DEFAULT_CONNECTION_COLOR = 'hsl(270 60% 65%)';
+
 const createDefaultPorts = () => [
   { id: crypto.randomUUID(), side: 'left' as const, type: 'input' as const },
   { id: crypto.randomUUID(), side: 'right' as const, type: 'output' as const },
@@ -16,6 +18,8 @@ const createNode = (type: NodeType, position: Position): CanvasNode => ({
   ports: createDefaultPorts(),
 });
 
+const cloneState = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
+
 export function useCanvasState() {
   const [nodes, setNodes] = useState<CanvasNode[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -26,9 +30,9 @@ export function useCanvasState() {
   const historyRef = useRef<{ nodes: CanvasNode[]; connections: Connection[] }[]>([{ nodes: [], connections: [] }]);
   const historyIndexRef = useRef(0);
 
-  const pushHistory = useCallback((n: CanvasNode[], c: Connection[]) => {
+  const pushHistory = useCallback((nextNodes: CanvasNode[], nextConnections: Connection[]) => {
     const newHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
-    newHistory.push({ nodes: JSON.parse(JSON.stringify(n)), connections: JSON.parse(JSON.stringify(c)) });
+    newHistory.push({ nodes: cloneState(nextNodes), connections: cloneState(nextConnections) });
     if (newHistory.length > 50) newHistory.shift();
     historyRef.current = newHistory;
     historyIndexRef.current = newHistory.length - 1;
@@ -38,114 +42,153 @@ export function useCanvasState() {
     const centerX = (-offset.x + window.innerWidth / 2) / zoom - 160;
     const centerY = (-offset.y + window.innerHeight / 2) / zoom - 100;
     const node = createNode(type, { x: centerX, y: centerY });
-    setNodes(prev => {
-      const next = [...prev, node];
-      pushHistory(next, connections);
-      return next;
+
+    setNodes((prevNodes) => {
+      const nextNodes = [...prevNodes, node];
+      pushHistory(nextNodes, connections);
+      return nextNodes;
     });
+
     setSelectedNodeId(node.id);
-  }, [offset, zoom, connections, pushHistory]);
+  }, [connections, offset.x, offset.y, pushHistory, zoom]);
 
   const updateNode = useCallback((id: string, updates: Partial<CanvasNode>) => {
-    setNodes(prev => prev.map(n => n.id === id ? { ...n, ...updates } : n));
+    setNodes((prevNodes) => prevNodes.map((node) => (node.id === id ? { ...node, ...updates } : node)));
   }, []);
 
   const deleteNode = useCallback((id: string) => {
-    setNodes(prev => {
-      const next = prev.filter(n => n.id !== id);
-      setConnections(prevC => {
-        const nextC = prevC.filter(c => c.fromNodeId !== id && c.toNodeId !== id);
-        pushHistory(next, nextC);
-        return nextC;
+    setNodes((prevNodes) => {
+      const nextNodes = prevNodes.filter((node) => node.id !== id);
+      setConnections((prevConnections) => {
+        const nextConnections = prevConnections.filter((connection) => connection.fromNodeId !== id && connection.toNodeId !== id);
+        pushHistory(nextNodes, nextConnections);
+        return nextConnections;
       });
-      return next;
+      return nextNodes;
     });
-    if (selectedNodeId === id) setSelectedNodeId(null);
-  }, [selectedNodeId, pushHistory]);
+
+    setSelectedNodeId((current) => (current === id ? null : current));
+  }, [pushHistory]);
 
   const duplicateNode = useCallback((id: string) => {
-    const node = nodes.find(n => n.id === id);
+    const node = nodes.find((item) => item.id === id);
     if (!node) return;
-    const newNode: CanvasNode = {
-      ...JSON.parse(JSON.stringify(node)),
+
+    const duplicatedNode: CanvasNode = {
+      ...cloneState(node),
       id: crypto.randomUUID(),
       position: { x: node.position.x + 40, y: node.position.y + 40 },
       ports: createDefaultPorts(),
     };
-    setNodes(prev => {
-      const next = [...prev, newNode];
-      pushHistory(next, connections);
-      return next;
+
+    setNodes((prevNodes) => {
+      const nextNodes = [...prevNodes, duplicatedNode];
+      pushHistory(nextNodes, connections);
+      return nextNodes;
     });
-    setSelectedNodeId(newNode.id);
-  }, [nodes, connections, pushHistory]);
+
+    setSelectedNodeId(duplicatedNode.id);
+  }, [connections, nodes, pushHistory]);
 
   const addConnection = useCallback((fromNodeId: string, fromPortId: string, toNodeId: string, toPortId: string) => {
     if (fromNodeId === toNodeId) return;
 
-    setConnections(prev => {
-      const exists = prev.some(c =>
-        c.fromNodeId === fromNodeId && c.fromPortId === fromPortId &&
-        c.toNodeId === toNodeId && c.toPortId === toPortId
+    const sourceNode = nodes.find((node) => node.id === fromNodeId);
+    const targetNode = nodes.find((node) => node.id === toNodeId);
+    const sourcePort = sourceNode?.ports.find((port) => port.id === fromPortId);
+    const targetPort = targetNode?.ports.find((port) => port.id === toPortId);
+
+    if (!sourceNode || !targetNode || !sourcePort || !targetPort) return;
+    if (sourcePort.type !== 'output' || targetPort.type !== 'input') return;
+
+    setConnections((prevConnections) => {
+      const exists = prevConnections.some((connection) =>
+        connection.fromNodeId === fromNodeId &&
+        connection.fromPortId === fromPortId &&
+        connection.toNodeId === toNodeId &&
+        connection.toPortId === toPortId
       );
 
-      if (exists) return prev;
+      if (exists) return prevConnections;
 
-      const conn: Connection = {
-        id: crypto.randomUUID(),
-        fromNodeId,
-        fromPortId,
-        toNodeId,
-        toPortId,
-        color: 'hsl(270 60% 65%)',
-      };
-      const next = [...prev, conn];
-      pushHistory(nodes, next);
-      return next;
+      const nextConnections = [
+        ...prevConnections,
+        {
+          id: crypto.randomUUID(),
+          fromNodeId,
+          fromPortId,
+          toNodeId,
+          toPortId,
+          color: DEFAULT_CONNECTION_COLOR,
+        },
+      ];
+
+      pushHistory(nodes, nextConnections);
+      return nextConnections;
     });
   }, [nodes, pushHistory]);
 
   const deleteConnection = useCallback((id: string) => {
-    setConnections(prev => {
-      const next = prev.filter(c => c.id !== id);
-      pushHistory(nodes, next);
-      return next;
+    setConnections((prevConnections) => {
+      const nextConnections = prevConnections.filter((connection) => connection.id !== id);
+      pushHistory(nodes, nextConnections);
+      return nextConnections;
     });
   }, [nodes, pushHistory]);
 
   const updateConnectionColor = useCallback((id: string, color: string) => {
-    setConnections(prev => {
-      const next = prev.map(c => c.id === id ? { ...c, color } : c);
-      pushHistory(nodes, next);
-      return next;
+    setConnections((prevConnections) => {
+      const nextConnections = prevConnections.map((connection) =>
+        connection.id === id ? { ...connection, color } : connection,
+      );
+      pushHistory(nodes, nextConnections);
+      return nextConnections;
     });
   }, [nodes, pushHistory]);
 
   const undo = useCallback(() => {
     if (historyIndexRef.current <= 0) return;
-    historyIndexRef.current--;
+    historyIndexRef.current -= 1;
     const state = historyRef.current[historyIndexRef.current];
-    setNodes(JSON.parse(JSON.stringify(state.nodes)));
-    setConnections(JSON.parse(JSON.stringify(state.connections)));
+    setNodes(cloneState(state.nodes));
+    setConnections(cloneState(state.connections));
   }, []);
 
   const redo = useCallback(() => {
     if (historyIndexRef.current >= historyRef.current.length - 1) return;
-    historyIndexRef.current++;
+    historyIndexRef.current += 1;
     const state = historyRef.current[historyIndexRef.current];
-    setNodes(JSON.parse(JSON.stringify(state.nodes)));
-    setConnections(JSON.parse(JSON.stringify(state.connections)));
+    setNodes(cloneState(state.nodes));
+    setConnections(cloneState(state.connections));
   }, []);
 
-  const zoomIn = useCallback(() => setZoom(z => Math.min(z * 1.2, 3)), []);
-  const zoomOut = useCallback(() => setZoom(z => Math.max(z / 1.2, 0.2)), []);
-  const resetView = useCallback(() => { setZoom(1); setOffset({ x: 0, y: 0 }); }, []);
+  const zoomIn = useCallback(() => setZoom((value) => Math.min(value * 1.2, 3)), []);
+  const zoomOut = useCallback(() => setZoom((value) => Math.max(value / 1.2, 0.2)), []);
+  const resetView = useCallback(() => {
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+  }, []);
 
   return {
-    nodes, connections, offset, zoom, selectedNodeId,
-    setOffset, setZoom, setSelectedNodeId,
-    addNode, updateNode, deleteNode, duplicateNode,
-    addConnection, deleteConnection, updateConnectionColor,
-    undo, redo, zoomIn, zoomOut, resetView,
+    nodes,
+    connections,
+    offset,
+    zoom,
+    selectedNodeId,
+    setOffset,
+    setZoom,
+    setSelectedNodeId,
+    addNode,
+    updateNode,
+    deleteNode,
+    duplicateNode,
+    addConnection,
+    deleteConnection,
+    updateConnectionColor,
+    undo,
+    redo,
+    zoomIn,
+    zoomOut,
+    resetView,
   };
 }
