@@ -109,6 +109,8 @@ export function NodeCard({
       {node.ports.map((port) => {
         const isSource = activeSourceHandleId === port.id;
         const isHighlighted = highlightedTargetHandleId === port.id;
+        const connColor = portColors.get(port.id);
+        const isConnected = !!connColor;
 
         return (
           <button
@@ -120,8 +122,12 @@ export function NodeCard({
               port.type === 'input' ? 'port-input' : 'port-output',
               isSource ? 'is-source' : '',
               isHighlighted ? 'is-highlighted' : '',
+              isConnected ? 'is-connected' : '',
             ].filter(Boolean).join(' ')}
-            style={getPortPosition(port.side)}
+            style={{
+              ...getPortPosition(port.side),
+              ...(connColor ? { '--port-dynamic-color': connColor } as React.CSSProperties : {}),
+            }}
             onMouseDown={(e) => handlePortMouseDown(e, port.id)}
           />
         );

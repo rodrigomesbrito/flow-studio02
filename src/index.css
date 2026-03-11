@@ -133,21 +133,26 @@
   /* unified — both purple */
 }
 
+.port-handle.is-connected::after {
+  background: var(--port-dynamic-color, hsl(var(--port-color)));
+  border-color: var(--port-dynamic-color, hsl(var(--port-color)));
+}
+
 .port-handle.is-source {
-  box-shadow: 0 0 0 4px hsl(var(--port-color) / 0.18), 0 0 14px hsl(var(--port-color) / 0.35);
+  box-shadow: 0 0 0 3px hsl(var(--port-color) / 0.18), 0 0 10px hsl(var(--port-color) / 0.35);
 }
 
 .port-handle.is-source::after {
-  box-shadow: 0 0 10px hsl(var(--port-color) / 0.6);
+  box-shadow: 0 0 8px hsl(var(--port-color) / 0.6);
 }
 
 .port-handle.is-highlighted {
-  box-shadow: 0 0 0 4px hsl(var(--port-highlight) / 0.2), 0 0 14px hsl(var(--port-highlight) / 0.4);
+  box-shadow: 0 0 0 3px hsl(var(--port-highlight) / 0.2), 0 0 10px hsl(var(--port-highlight) / 0.4);
 }
 
 .port-handle.is-highlighted::after {
   background: hsl(var(--port-highlight));
-  box-shadow: 0 0 10px hsl(var(--port-highlight) / 0.6);
+  box-shadow: 0 0 8px hsl(var(--port-highlight) / 0.6);
 }
 
 ::-webkit-scrollbar {

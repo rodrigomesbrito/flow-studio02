@@ -492,6 +492,7 @@ export function InfiniteCanvas() {
                 isSelected={selectedNodeIds.has(node.id)}
                 activeSourceHandleId={activeSourceHandleId}
                 highlightedTargetHandleId={highlightedTargetHandleId}
+                portColors={portColorMap}
                 onSelect={(e) => handleNodeSelect(node.id, e)}
                 onUpdate={(updates) => updateNode(node.id, updates)}
                 onDelete={() => deleteNode(node.id)}
