@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
 import { MoreHorizontal, Copy, Trash2, GripVertical, Upload } from 'lucide-react';
-import { CanvasNode, Position, Port } from '@/types/canvas';
+import { CanvasNode, Position } from '@/types/canvas';
 
 interface NodeCardProps {
   node: CanvasNode;
@@ -11,20 +11,18 @@ interface NodeCardProps {
   onDelete: () => void;
   onDuplicate: () => void;
   onDragStart: (nodeId: string, startMouse: Position) => void;
-  onPortDragStart: (nodeId: string, portId: string, portType: Port['type']) => void;
-  onPortHover: (nodeId: string, portId: string, portType: Port['type']) => void;
-  onPortHoverLeave: (nodeId: string, portId: string) => void;
+  onPortDragStart: (nodeId: string, portId: string) => void;
 }
 
 export function NodeCard({
   node, zoom, isSelected, onSelect, onUpdate, onDelete, onDuplicate,
-  onDragStart, onPortDragStart, onPortHover, onPortHoverLeave,
+  onDragStart, onPortDragStart,
 }: NodeCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.port') || (e.target as HTMLElement).closest('.resize-handle') || (e.target as HTMLElement).closest('textarea') || (e.target as HTMLElement).closest('input')) return;
+    if ((e.target as HTMLElement).closest('.port-handle') || (e.target as HTMLElement).closest('.resize-handle') || (e.target as HTMLElement).closest('textarea') || (e.target as HTMLElement).closest('input')) return;
     e.stopPropagation();
     onSelect();
     onDragStart(node.id, { x: e.clientX, y: e.clientY });
@@ -57,12 +55,11 @@ export function NodeCard({
     window.addEventListener('mouseup', handleUp);
   }, [node.size, zoom, onUpdate]);
 
-  const handlePortMouseDown = useCallback((e: React.MouseEvent, portId: string, portType: Port['type']) => {
+  const handlePortMouseDown = useCallback((e: React.MouseEvent, portId: string) => {
     e.stopPropagation();
     e.preventDefault();
-    onSelect();
-    onPortDragStart(node.id, portId, portType);
-  }, [node.id, onPortDragStart, onSelect]);
+    onPortDragStart(node.id, portId);
+  }, [node.id, onPortDragStart]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -96,20 +93,17 @@ export function NodeCard({
       }}
       onMouseDown={handleMouseDown}
     >
+      {/* Connection handles */}
       {node.ports.map(port => (
         <div
           key={port.id}
-          data-port-id={port.id}
-          data-node-id={node.id}
-          data-port-type={port.type}
-          className={`port absolute ${port.type === 'input' ? 'port-input' : 'port-output'}`}
+          className={`port-handle absolute ${port.type === 'input' ? 'port-input' : 'port-output'}`}
           style={getPortPosition(port.side)}
-          onMouseDown={(e) => handlePortMouseDown(e, port.id, port.type)}
-          onMouseEnter={() => onPortHover(node.id, port.id, port.type)}
-          onMouseLeave={() => onPortHoverLeave(node.id, port.id)}
+          onMouseDown={(e) => handlePortMouseDown(e, port.id)}
         />
       ))}
 
+      {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
         <div className="flex items-center gap-2">
           <GripVertical size={14} className="text-muted-foreground cursor-grab" />
@@ -140,6 +134,7 @@ export function NodeCard({
         </div>
       </div>
 
+      {/* Content */}
       <div className="p-3 h-[calc(100%-42px)] overflow-hidden">
         {node.type === 'text' && (
           <textarea
@@ -164,6 +159,7 @@ export function NodeCard({
         )}
       </div>
 
+      {/* Resize handle */}
       <div
         className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
         onMouseDown={handleResizeStart}
