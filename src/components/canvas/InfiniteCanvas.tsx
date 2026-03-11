@@ -19,6 +19,7 @@ export function InfiniteCanvas() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [activeTool, setActiveTool] = useState<CanvasTool>('cursor');
   const [isPanning, setIsPanning] = useState(false);
+  const [highlightedTargetHandleId, setHighlightedTargetHandleId] = useState<string | null>(null);
   const panStart = useRef<Position>({ x: 0, y: 0 });
   const offsetStart = useRef<Position>({ x: 0, y: 0 });
 
@@ -26,15 +27,15 @@ export function InfiniteCanvas() {
   const dragStart = useRef<Position>({ x: 0, y: 0 });
   const nodeStartPos = useRef<Position>({ x: 0, y: 0 });
 
-  // Connection drag state
   const [tempConnection, setTempConnection] = useState<{ fromX: number; fromY: number; toX: number; toY: number } | null>(null);
   const connectionDragRef = useRef<{ nodeId: string; portId: string } | null>(null);
 
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
 
-  // Ref to always have latest nodes for geometry checks
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
+
+  const activeSourceHandleId = connectionDragRef.current?.portId ?? null;
 
   const getCursorStyle = () => {
     if (isPanning) return 'grabbing';
@@ -59,7 +60,6 @@ export function InfiniteCanvas() {
   }, [offset]);
 
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
-    // Middle mouse button always pans
     if (e.button === 1) {
       beginPan(e.clientX, e.clientY);
       return;
@@ -96,31 +96,48 @@ export function InfiniteCanvas() {
       });
     }
 
-    // Update temp connection line
     if (connectionDragRef.current) {
-      const sourceNode = nodesRef.current.find(n => n.id === connectionDragRef.current!.nodeId);
+      const sourceNode = nodesRef.current.find((node) => node.id === connectionDragRef.current?.nodeId);
       if (sourceNode) {
         const fromPos = getHandleWorldPosition(sourceNode, connectionDragRef.current.portId);
         if (fromPos) {
           const toPos = screenToCanvas(clientX, clientY);
-          setTempConnection({ fromX: fromPos.x, fromY: fromPos.y, toX: toPos.x, toY: toPos.y });
+          const target = findClosestCompatibleHandle({
+            nodes: nodesRef.current,
+            sourceNodeId: connectionDragRef.current.nodeId,
+            sourceHandleId: connectionDragRef.current.portId,
+            point: toPos,
+            maxDistance: HANDLE_HIT_RADIUS / zoom,
+          });
+
+          setHighlightedTargetHandleId(target?.handle.id ?? null);
+          setTempConnection({
+            fromX: fromPos.x,
+            fromY: fromPos.y,
+            toX: target?.position.x ?? toPos.x,
+            toY: target?.position.y ?? toPos.y,
+          });
         }
       }
     }
   }, [draggingNodeId, isPanning, screenToCanvas, setOffset, updateNode, zoom]);
 
+  const resetConnectionDrag = useCallback(() => {
+    connectionDragRef.current = null;
+    setTempConnection(null);
+    setHighlightedTargetHandleId(null);
+  }, []);
+
   const finishConnectionDrag = useCallback((clientX: number, clientY: number) => {
     if (!connectionDragRef.current) return;
 
     const canvasPoint = screenToCanvas(clientX, clientY);
-    
-    // Use geometry-based detection: find the closest compatible input handle within hit radius
     const target = findClosestCompatibleHandle({
       nodes: nodesRef.current,
       sourceNodeId: connectionDragRef.current.nodeId,
       sourceHandleId: connectionDragRef.current.portId,
       point: canvasPoint,
-      maxDistance: HANDLE_HIT_RADIUS / zoom, // Scale hit radius by zoom
+      maxDistance: HANDLE_HIT_RADIUS / zoom,
     });
 
     if (target) {
@@ -132,9 +149,8 @@ export function InfiniteCanvas() {
       );
     }
 
-    connectionDragRef.current = null;
-    setTempConnection(null);
-  }, [addConnection, screenToCanvas, zoom]);
+    resetConnectionDrag();
+  }, [addConnection, resetConnectionDrag, screenToCanvas, zoom]);
 
   const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
     handleMouseMove(e.clientX, e.clientY);
@@ -146,9 +162,8 @@ export function InfiniteCanvas() {
     finishConnectionDrag(e.clientX, e.clientY);
   }, [finishConnectionDrag]);
 
-  // Global window listeners for drag operations that escape the canvas
   useEffect(() => {
-    const isActive = draggingNodeId || connectionDragRef.current || isPanning;
+    const isActive = Boolean(draggingNodeId || connectionDragRef.current || isPanning);
     if (!isActive) return;
 
     const handleWindowMouseMove = (e: MouseEvent) => handleMouseMove(e.clientX, e.clientY);
@@ -165,7 +180,7 @@ export function InfiniteCanvas() {
       window.removeEventListener('mousemove', handleWindowMouseMove);
       window.removeEventListener('mouseup', handleWindowMouseUp);
     };
-  }, [draggingNodeId, finishConnectionDrag, handleMouseMove, isPanning, tempConnection]);
+  }, [draggingNodeId, finishConnectionDrag, handleMouseMove, isPanning]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
@@ -183,26 +198,28 @@ export function InfiniteCanvas() {
 
   const handleNodeDragStart = useCallback((nodeId: string, startMouse: Position) => {
     if (activeTool === 'hand') return;
-    const node = nodes.find(n => n.id === nodeId);
+    const node = nodes.find((item) => item.id === nodeId);
     if (!node) return;
     setDraggingNodeId(nodeId);
     dragStart.current = startMouse;
     nodeStartPos.current = { ...node.position };
-  }, [nodes, activeTool]);
+  }, [activeTool, nodes]);
 
   const handlePortDragStart = useCallback((nodeId: string, portId: string) => {
     if (activeTool === 'hand') return;
     connectionDragRef.current = { nodeId, portId };
-    const sourceNode = nodesRef.current.find(n => n.id === nodeId);
-    if (sourceNode) {
-      const fromPos = getHandleWorldPosition(sourceNode, portId);
-      if (fromPos) {
-        setTempConnection({ fromX: fromPos.x, fromY: fromPos.y, toX: fromPos.x, toY: fromPos.y });
-      }
-    }
-  }, [activeTool]);
+    const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
+    if (!sourceNode) return;
 
-  // Keyboard shortcuts
+    const fromPos = getHandleWorldPosition(sourceNode, portId);
+    if (!fromPos) return;
+
+    setSelectedNodeId(nodeId);
+    setSelectedConnectionId(null);
+    setHighlightedTargetHandleId(null);
+    setTempConnection({ fromX: fromPos.x, fromY: fromPos.y, toX: fromPos.x, toY: fromPos.y });
+  }, [activeTool, setSelectedNodeId]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
@@ -223,15 +240,14 @@ export function InfiniteCanvas() {
       if (e.key === 'h' || e.key === 'H') setActiveTool('hand');
       if (e.key === 'c' && !e.metaKey && !e.ctrlKey) setActiveTool('connect');
       if (e.key === 'Escape') {
-        connectionDragRef.current = null;
-        setTempConnection(null);
+        resetConnectionDrag();
         setSelectedNodeId(null);
         setSelectedConnectionId(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNodeId, selectedConnectionId, deleteNode, deleteConnection, undo, redo, setSelectedNodeId]);
+  }, [selectedNodeId, selectedConnectionId, deleteNode, deleteConnection, undo, redo, setSelectedNodeId, resetConnectionDrag]);
 
   return (
     <div className="w-screen h-screen overflow-hidden relative">
@@ -265,12 +281,14 @@ export function InfiniteCanvas() {
             }}
           />
 
-          {nodes.map(node => (
+          {nodes.map((node) => (
             <NodeCard
               key={node.id}
               node={node}
               zoom={zoom}
               isSelected={selectedNodeId === node.id}
+              activeSourceHandleId={activeSourceHandleId}
+              highlightedTargetHandleId={highlightedTargetHandleId}
               onSelect={() => {
                 setSelectedNodeId(node.id);
                 setSelectedConnectionId(null);
