@@ -23,6 +23,7 @@ export function NodeCard({
   isSelected,
   activeSourceHandleId,
   highlightedTargetHandleId,
+  portColors,
   onSelect,
   onUpdate,
   onDelete,
