@@ -12,15 +12,13 @@ interface NodeCardProps {
   onDuplicate: () => void;
   onDragStart: (nodeId: string, startMouse: Position) => void;
   onPortDragStart: (nodeId: string, portId: string) => void;
-  onPortDragEnd: (nodeId: string, portId: string) => void;
 }
 
 export function NodeCard({
   node, zoom, isSelected, onSelect, onUpdate, onDelete, onDuplicate,
-  onDragStart, onPortDragStart, onPortDragEnd,
+  onDragStart, onPortDragStart,
 }: NodeCardProps) {
   const [showMenu, setShowMenu] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -33,7 +31,6 @@ export function NodeCard({
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    setIsResizing(true);
     resizeRef.current = { startX: e.clientX, startY: e.clientY, startW: node.size.width, startH: node.size.height };
 
     const handleMove = (ev: MouseEvent) => {
@@ -47,12 +44,13 @@ export function NodeCard({
         }
       });
     };
+
     const handleUp = () => {
-      setIsResizing(false);
       resizeRef.current = null;
       window.removeEventListener('mousemove', handleMove);
       window.removeEventListener('mouseup', handleUp);
     };
+
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
   }, [node.size, zoom, onUpdate]);
@@ -60,13 +58,9 @@ export function NodeCard({
   const handlePortMouseDown = useCallback((e: React.MouseEvent, portId: string) => {
     e.stopPropagation();
     e.preventDefault();
+    onSelect();
     onPortDragStart(node.id, portId);
-  }, [node.id, onPortDragStart]);
-
-  const handlePortMouseUp = useCallback((e: React.MouseEvent, portId: string) => {
-    e.stopPropagation();
-    onPortDragEnd(node.id, portId);
-  }, [node.id, onPortDragEnd]);
+  }, [node.id, onPortDragStart, onSelect]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -100,18 +94,18 @@ export function NodeCard({
       }}
       onMouseDown={handleMouseDown}
     >
-      {/* Ports */}
       {node.ports.map(port => (
         <div
           key={port.id}
+          data-port-id={port.id}
+          data-node-id={node.id}
+          data-port-type={port.type}
           className={`port absolute ${port.type === 'input' ? 'port-input' : 'port-output'}`}
           style={getPortPosition(port.side)}
           onMouseDown={(e) => handlePortMouseDown(e, port.id)}
-          onMouseUp={(e) => handlePortMouseUp(e, port.id)}
         />
       ))}
 
-      {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
         <div className="flex items-center gap-2">
           <GripVertical size={14} className="text-muted-foreground cursor-grab" />
@@ -142,7 +136,6 @@ export function NodeCard({
         </div>
       </div>
 
-      {/* Content */}
       <div className="p-3 h-[calc(100%-42px)] overflow-hidden">
         {node.type === 'text' && (
           <textarea
@@ -167,7 +160,6 @@ export function NodeCard({
         )}
       </div>
 
-      {/* Resize handle */}
       <div
         className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
         onMouseDown={handleResizeStart}
@@ -179,3 +171,4 @@ export function NodeCard({
     </div>
   );
 }
+
