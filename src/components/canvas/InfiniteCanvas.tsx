@@ -262,7 +262,7 @@ export function InfiniteCanvas() {
 
       <div
         ref={canvasRef}
-        className="absolute inset-0 ml-14 canvas-grid"
+        className="absolute inset-0 ml-14 canvas-grid overflow-hidden"
         style={{ cursor: getCursorStyle() }}
         onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleCanvasMouseMove}
