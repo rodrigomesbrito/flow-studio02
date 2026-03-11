@@ -86,10 +86,10 @@ export function NodeCard({
 
   const getPortPosition = (side: string): React.CSSProperties => {
     switch (side) {
-      case 'left': return { left: -14, top: '50%', transform: 'translateY(-50%)', '--port-hover-transform': 'translateY(-50%) scale(1.18)' } as React.CSSProperties;
-      case 'right': return { right: -14, top: '50%', transform: 'translateY(-50%)', '--port-hover-transform': 'translateY(-50%) scale(1.18)' } as React.CSSProperties;
-      case 'top': return { top: -14, left: '50%', transform: 'translateX(-50%)', '--port-hover-transform': 'translateX(-50%) scale(1.18)' } as React.CSSProperties;
-      case 'bottom': return { bottom: -14, left: '50%', transform: 'translateX(-50%)', '--port-hover-transform': 'translateX(-50%) scale(1.18)' } as React.CSSProperties;
+      case 'left': return { left: -10, top: '50%', transform: 'translateY(-50%)', '--port-hover-transform': 'translateY(-50%) scale(1.18)' } as React.CSSProperties;
+      case 'right': return { right: -10, top: '50%', transform: 'translateY(-50%)', '--port-hover-transform': 'translateY(-50%) scale(1.18)' } as React.CSSProperties;
+      case 'top': return { top: -10, left: '50%', transform: 'translateX(-50%)', '--port-hover-transform': 'translateX(-50%) scale(1.18)' } as React.CSSProperties;
+      case 'bottom': return { bottom: -10, left: '50%', transform: 'translateX(-50%)', '--port-hover-transform': 'translateX(-50%) scale(1.18)' } as React.CSSProperties;
       default: return {};
     }
   };
