@@ -1,5 +1,7 @@
 export type NodeType = 'text' | 'image';
 
+export type CanvasTool = 'cursor' | 'hand' | 'connect';
+
 export interface Position {
   x: number;
   y: number;
@@ -27,12 +29,22 @@ export interface CanvasNode {
   ports: Port[];
 }
 
+export const CONNECTION_COLORS = [
+  { label: 'Roxo', value: '#a78bfa' },
+  { label: 'Azul', value: '#60a5fa' },
+  { label: 'Verde', value: '#34d399' },
+  { label: 'Vermelho', value: '#f87171' },
+  { label: 'Amarelo', value: '#fbbf24' },
+  { label: 'Ciano', value: '#22d3ee' },
+] as const;
+
 export interface Connection {
   id: string;
   fromNodeId: string;
   fromPortId: string;
   toNodeId: string;
   toPortId: string;
+  color?: string;
 }
 
 export interface CanvasState {

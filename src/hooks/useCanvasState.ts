@@ -23,7 +23,6 @@ export function useCanvasState() {
   const [zoom, setZoom] = useState(1);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  // History for undo/redo
   const historyRef = useRef<{ nodes: CanvasNode[]; connections: Connection[] }[]>([{ nodes: [], connections: [] }]);
   const historyIndexRef = useRef(0);
 
@@ -48,12 +47,8 @@ export function useCanvasState() {
   }, [offset, zoom, connections, pushHistory]);
 
   const updateNode = useCallback((id: string, updates: Partial<CanvasNode>) => {
-    setNodes(prev => {
-      const next = prev.map(n => n.id === id ? { ...n, ...updates } : n);
-      pushHistory(next, connections);
-      return next;
-    });
-  }, [connections, pushHistory]);
+    setNodes(prev => prev.map(n => n.id === id ? { ...n, ...updates } : n));
+  }, []);
 
   const deleteNode = useCallback((id: string) => {
     setNodes(prev => {
@@ -87,7 +82,10 @@ export function useCanvasState() {
 
   const addConnection = useCallback((fromNodeId: string, fromPortId: string, toNodeId: string, toPortId: string) => {
     if (fromNodeId === toNodeId) return;
-    const exists = connections.some(c => c.fromNodeId === fromNodeId && c.fromPortId === fromPortId && c.toNodeId === toNodeId && c.toPortId === toPortId);
+    const exists = connections.some(c =>
+      c.fromNodeId === fromNodeId && c.fromPortId === fromPortId &&
+      c.toNodeId === toNodeId && c.toPortId === toPortId
+    );
     if (exists) return;
     const conn: Connection = { id: crypto.randomUUID(), fromNodeId, fromPortId, toNodeId, toPortId };
     setConnections(prev => {
@@ -100,6 +98,14 @@ export function useCanvasState() {
   const deleteConnection = useCallback((id: string) => {
     setConnections(prev => {
       const next = prev.filter(c => c.id !== id);
+      pushHistory(nodes, next);
+      return next;
+    });
+  }, [nodes, pushHistory]);
+
+  const updateConnectionColor = useCallback((id: string, color: string) => {
+    setConnections(prev => {
+      const next = prev.map(c => c.id === id ? { ...c, color } : c);
       pushHistory(nodes, next);
       return next;
     });
@@ -129,7 +135,7 @@ export function useCanvasState() {
     nodes, connections, offset, zoom, selectedNodeId,
     setOffset, setZoom, setSelectedNodeId,
     addNode, updateNode, deleteNode, duplicateNode,
-    addConnection, deleteConnection,
+    addConnection, deleteConnection, updateConnectionColor,
     undo, redo, zoomIn, zoomOut, resetView,
   };
 }
