@@ -28,7 +28,7 @@ export function FreeTextNode({
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.resize-handle')) return;
     e.stopPropagation();
-    onSelect();
+    onSelect(e);
     if (!isEditing) {
       onDragStart(node.id, { x: e.clientX, y: e.clientY });
     }

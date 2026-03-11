@@ -35,7 +35,7 @@ export function NodeCard({
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.port-handle') || (e.target as HTMLElement).closest('.resize-handle') || (e.target as HTMLElement).closest('textarea') || (e.target as HTMLElement).closest('input')) return;
     e.stopPropagation();
-    onSelect();
+    onSelect(e);
     onDragStart(node.id, { x: e.clientX, y: e.clientY });
   }, [node.id, onSelect, onDragStart]);
 
