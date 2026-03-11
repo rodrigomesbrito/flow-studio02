@@ -1,4 +1,4 @@
-export type NodeType = 'text' | 'image' | 'prompt';
+export type NodeType = 'text' | 'image';
 
 export interface Position {
   x: number;

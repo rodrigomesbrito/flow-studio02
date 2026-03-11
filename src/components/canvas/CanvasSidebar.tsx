@@ -18,7 +18,6 @@ const navIcons = [
 const nodeButtons: { icon: typeof Type; label: string; type: NodeType }[] = [
   { icon: Type, label: 'Texto', type: 'text' },
   { icon: Image, label: 'Imagem', type: 'image' },
-  { icon: AlignLeft, label: 'Prompt', type: 'prompt' },
 ];
 
 export function CanvasSidebar({ onAddNode }: CanvasSidebarProps) {

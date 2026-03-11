@@ -156,20 +156,6 @@ export function NodeCard({
             className="w-full h-full bg-secondary/50 rounded-lg p-3 text-sm text-foreground resize-none outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground"
           />
         )}
-        {node.type === 'prompt' && (
-          <div className="h-full flex flex-col gap-2">
-            <textarea
-              value={node.content}
-              onChange={(e) => onUpdate({ content: e.target.value })}
-              placeholder="Escreva seu prompt..."
-              className="w-full flex-1 bg-secondary/50 rounded-lg p-3 text-sm text-foreground resize-none outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground leading-relaxed"
-            />
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>+ Add variable</span>
-              <span>Display: Source + Value</span>
-            </div>
-          </div>
-        )}
         {node.type === 'image' && (
           <div className="h-full flex flex-col">
             {node.imageUrl ? (
