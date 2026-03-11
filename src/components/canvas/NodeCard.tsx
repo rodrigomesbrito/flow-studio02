@@ -8,6 +8,7 @@ interface NodeCardProps {
   isSelected: boolean;
   activeSourceHandleId: string | null;
   highlightedTargetHandleId: string | null;
+  portColors: Map<string, string>;
   onSelect: (e?: React.MouseEvent) => void;
   onUpdate: (updates: Partial<CanvasNode>) => void;
   onDelete: () => void;
