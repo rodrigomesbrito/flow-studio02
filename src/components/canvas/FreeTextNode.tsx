@@ -46,9 +46,17 @@ export function FreeTextNode({
     e.stopPropagation();
     onSelect(e);
     if (!isEditing) {
-      onDragStart(node.id, { x: e.clientX, y: e.clientY });
+      onDragStart(node.id, { x: e.clientX, y: e.clientY }, e.altKey);
     }
   }, [node.id, onSelect, onDragStart, isEditing]);
+
+  // Auto-edit when created via double-click
+  useEffect(() => {
+    if (autoEdit) {
+      setIsEditing(true);
+      onAutoEditConsumed?.();
+    }
+  }, [autoEdit, onAutoEditConsumed]);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
