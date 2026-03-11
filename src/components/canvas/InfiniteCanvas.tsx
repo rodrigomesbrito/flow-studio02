@@ -133,6 +133,7 @@ export function InfiniteCanvas() {
 
   const resetConnectionDrag = useCallback(() => {
     connectionDragRef.current = null;
+    setIsConnecting(false);
     setTempConnection(null);
     setHighlightedTargetHandleId(null);
   }, []);
