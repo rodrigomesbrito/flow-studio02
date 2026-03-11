@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -46,6 +49,20 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        canvas: {
+          bg: "hsl(var(--canvas-bg))",
+          dot: "hsl(var(--canvas-dot))",
+        },
+        node: {
+          border: "hsl(var(--node-border))",
+        },
+        connection: {
+          line: "hsl(var(--connection-line))",
+        },
+        port: {
+          input: "hsl(var(--port-color))",
+          output: "hsl(var(--port-output))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
