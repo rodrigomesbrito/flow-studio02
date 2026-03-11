@@ -15,6 +15,11 @@ export function AppSidebar() {
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-14 bg-sidebar border-r border-sidebar-border flex flex-col items-center z-50">
+      {/* Logo */}
+      <div className="w-8 h-8 mt-3 mb-1 rounded-lg bg-primary/20 flex items-center justify-center">
+        <span className="text-sm font-bold text-primary">W</span>
+      </div>
+
       {/* Back to files */}
       <Tooltip delayDuration={200}>
         <TooltipTrigger asChild>
