@@ -8,15 +8,29 @@ const createDefaultPorts = () => [
   { id: crypto.randomUUID(), side: 'right' as const, type: 'output' as const },
 ];
 
-const createNode = (type: NodeType, position: Position): CanvasNode => ({
-  id: crypto.randomUUID(),
-  type,
-  position,
-  size: { width: type === 'image' ? 280 : 320, height: type === 'image' ? 300 : 180 },
-  title: type === 'text' ? 'Text' : 'Image',
-  content: '',
-  ports: createDefaultPorts(),
-});
+const getNodeDefaults = (type: NodeType) => {
+  switch (type) {
+    case 'freetext':
+      return { width: 240, height: 60, title: 'Texto livre' };
+    case 'image':
+      return { width: 280, height: 300, title: 'Image' };
+    default:
+      return { width: 320, height: 180, title: 'Text' };
+  }
+};
+
+const createNode = (type: NodeType, position: Position): CanvasNode => {
+  const defaults = getNodeDefaults(type);
+  return {
+    id: crypto.randomUUID(),
+    type,
+    position,
+    size: { width: defaults.width, height: defaults.height },
+    title: defaults.title,
+    content: '',
+    ports: type === 'freetext' ? [] : createDefaultPorts(),
+  };
+};
 
 const cloneState = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
 
