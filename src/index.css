@@ -60,9 +60,11 @@
     @apply border-border;
   }
 
-  body {
+  html, body {
     @apply bg-background text-foreground font-sans;
     font-family: 'Inter', sans-serif;
+    overflow: hidden;
+    height: 100%;
   }
 }
 
