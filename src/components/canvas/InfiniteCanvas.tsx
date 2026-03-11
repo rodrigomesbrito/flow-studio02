@@ -37,6 +37,7 @@ export function InfiniteCanvas() {
 
   const [tempConnection, setTempConnection] = useState<{ fromX: number; fromY: number; toX: number; toY: number } | null>(null);
   const connectionDragRef = useRef<{ nodeId: string; portId: string } | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
 
