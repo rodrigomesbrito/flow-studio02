@@ -8,7 +8,7 @@ interface NodeCardProps {
   isSelected: boolean;
   activeSourceHandleId: string | null;
   highlightedTargetHandleId: string | null;
-  onSelect: () => void;
+  onSelect: (e?: React.MouseEvent) => void;
   onUpdate: (updates: Partial<CanvasNode>) => void;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -35,7 +35,7 @@ export function NodeCard({
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.port-handle') || (e.target as HTMLElement).closest('.resize-handle') || (e.target as HTMLElement).closest('textarea') || (e.target as HTMLElement).closest('input')) return;
     e.stopPropagation();
-    onSelect();
+    onSelect(e);
     onDragStart(node.id, { x: e.clientX, y: e.clientY });
   }, [node.id, onSelect, onDragStart]);
 

@@ -39,7 +39,7 @@ export function useCanvasState() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [offset, setOffset] = useState<Position>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
 
   const historyRef = useRef<{ nodes: CanvasNode[]; connections: Connection[] }[]>([{ nodes: [], connections: [] }]);
   const historyIndexRef = useRef(0);
@@ -63,7 +63,7 @@ export function useCanvasState() {
       return nextNodes;
     });
 
-    setSelectedNodeId(node.id);
+    setSelectedNodeIds(new Set([node.id]));
   }, [connections, offset.x, offset.y, pushHistory, zoom]);
 
   const updateNode = useCallback((id: string, updates: Partial<CanvasNode>) => {
@@ -81,7 +81,11 @@ export function useCanvasState() {
       return nextNodes;
     });
 
-    setSelectedNodeId((current) => (current === id ? null : current));
+    setSelectedNodeIds((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
   }, [pushHistory]);
 
   const duplicateNode = useCallback((id: string) => {
@@ -101,7 +105,7 @@ export function useCanvasState() {
       return nextNodes;
     });
 
-    setSelectedNodeId(duplicatedNode.id);
+    setSelectedNodeIds(new Set([duplicatedNode.id]));
   }, [connections, nodes, pushHistory]);
 
   const addConnection = useCallback((fromNodeId: string, fromPortId: string, toNodeId: string, toPortId: string) => {
@@ -188,10 +192,10 @@ export function useCanvasState() {
     connections,
     offset,
     zoom,
-    selectedNodeId,
+    selectedNodeIds,
     setOffset,
     setZoom,
-    setSelectedNodeId,
+    setSelectedNodeIds,
     addNode,
     updateNode,
     deleteNode,

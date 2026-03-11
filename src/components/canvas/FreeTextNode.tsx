@@ -6,7 +6,7 @@ interface FreeTextNodeProps {
   node: CanvasNode;
   zoom: number;
   isSelected: boolean;
-  onSelect: () => void;
+  onSelect: (e?: React.MouseEvent) => void;
   onUpdate: (updates: Partial<CanvasNode>) => void;
   onDelete: () => void;
   onDragStart: (nodeId: string, startMouse: Position) => void;
@@ -28,7 +28,7 @@ export function FreeTextNode({
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.resize-handle')) return;
     e.stopPropagation();
-    onSelect();
+    onSelect(e);
     if (!isEditing) {
       onDragStart(node.id, { x: e.clientX, y: e.clientY });
     }
