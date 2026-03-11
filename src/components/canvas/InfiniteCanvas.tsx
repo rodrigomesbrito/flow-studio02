@@ -74,6 +74,17 @@ export function InfiniteCanvas() {
 
   const effectiveTool = spaceHeld ? 'hand' : activeTool;
 
+  // Build a map of portId → connection color for connected ports
+  const portColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    connections.forEach((conn) => {
+      const color = conn.color || DEFAULT_EDGE_COLOR;
+      map.set(conn.fromPortId, color);
+      map.set(conn.toPortId, color);
+    });
+    return map;
+  }, [connections]);
+
   const getCursorStyle = () => {
     if (isPanning) return 'grabbing';
     if (selectionBox) return 'crosshair';
