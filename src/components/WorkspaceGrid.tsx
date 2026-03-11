@@ -270,7 +270,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
                       )}
                     </div>
                     <span className="text-xs text-muted-foreground flex-shrink-0">
-                      {item.type === 'canvas' ? timeAgo(item.updatedAt) : `${0} files`}
+                      {item.type === 'canvas' ? timeAgo(item.updatedAt) : `${getChildren(item.id).length} files`}
                     </span>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
