@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { CanvasToolsProvider } from "@/contexts/CanvasToolsContext";
 import { AppSidebar } from "@/components/AppSidebar";
 import HomePage from "./pages/HomePage";
 import CanvasPage from "./pages/CanvasPage";
@@ -18,14 +19,16 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AppSidebar />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/canvas" element={<CanvasPage />} />
-          <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/files" element={<FilesPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <CanvasToolsProvider>
+          <AppSidebar />
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/canvas" element={<CanvasPage />} />
+            <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/files" element={<FilesPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </CanvasToolsProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

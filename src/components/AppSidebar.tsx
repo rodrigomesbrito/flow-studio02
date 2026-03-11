@@ -1,11 +1,8 @@
 import { Home, LayoutGrid, FolderOpen, FileImage, Type, Image } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { useCanvasTools } from '@/contexts/CanvasToolsContext';
 import { NodeType } from '@/types/canvas';
-
-interface AppSidebarProps {
-  onAddNode?: (type: NodeType) => void;
-}
 
 interface SidebarItem {
   icon: typeof Home;
@@ -25,9 +22,10 @@ const canvasTools: { icon: typeof Type; label: string; type: NodeType }[] = [
   { icon: Image, label: 'Adicionar Imagem', type: 'image' },
 ];
 
-export function AppSidebar({ onAddNode }: AppSidebarProps) {
+export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { addNodeHandler } = useCanvasTools();
   const isCanvasRoute = location.pathname.startsWith('/canvas');
 
   return (
@@ -67,7 +65,7 @@ export function AppSidebar({ onAddNode }: AppSidebarProps) {
       </nav>
 
       {/* Canvas tools — only visible inside canvas editor */}
-      {isCanvasRoute && onAddNode && (
+      {isCanvasRoute && addNodeHandler && (
         <>
           <div className="w-6 h-px bg-sidebar-border my-1" />
           <div className="flex flex-col items-center gap-1">
@@ -75,7 +73,7 @@ export function AppSidebar({ onAddNode }: AppSidebarProps) {
               <Tooltip key={type} delayDuration={200}>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => onAddNode(type)}
+                    onClick={() => addNodeHandler(type)}
                     className="w-10 h-10 rounded-lg flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors"
                   >
                     <Icon size={18} strokeWidth={1.5} />
