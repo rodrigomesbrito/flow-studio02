@@ -37,7 +37,7 @@ interface WorkspaceGridProps {
 
 export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps) {
   const navigate = useNavigate();
-  const { renameItem, deleteItem } = useWorkspace();
+  const { renameItem, deleteItem, getChildren } = useWorkspace();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
