@@ -18,6 +18,13 @@ export interface Port {
   type: 'input' | 'output';
 }
 
+export interface TextStyle {
+  fontSize: number;
+  bold: boolean;
+  italic: boolean;
+  uppercase: boolean;
+}
+
 export interface CanvasNode {
   id: string;
   type: NodeType;
@@ -27,6 +34,7 @@ export interface CanvasNode {
   content: string;
   imageUrl?: string;
   ports: Port[];
+  textStyle?: TextStyle;
 }
 
 export const CONNECTION_COLORS = [
