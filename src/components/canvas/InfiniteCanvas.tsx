@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { useCanvasState } from '@/hooks/useCanvasState';
 import { useCanvasTools } from '@/contexts/CanvasToolsContext';
 import { BottomToolbar } from './BottomToolbar';
@@ -6,6 +6,7 @@ import { NodeCard } from './NodeCard';
 import { FreeTextNode } from './FreeTextNode';
 import { ConnectionLines } from './ConnectionLines';
 import { Position, CanvasTool } from '@/types/canvas';
+import { DEFAULT_EDGE_COLOR } from './connection-utils';
 import { getHandleWorldPosition, findClosestCompatibleHandle, HANDLE_HIT_RADIUS } from './connection-utils';
 
 interface SelectionBox {
@@ -72,6 +73,17 @@ export function InfiniteCanvas() {
   const activeSourceHandleId = connectionDragRef.current?.portId ?? null;
 
   const effectiveTool = spaceHeld ? 'hand' : activeTool;
+
+  // Build a map of portId → connection color for connected ports
+  const portColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    connections.forEach((conn) => {
+      const color = conn.color || DEFAULT_EDGE_COLOR;
+      map.set(conn.fromPortId, color);
+      map.set(conn.toPortId, color);
+    });
+    return map;
+  }, [connections]);
 
   const getCursorStyle = () => {
     if (isPanning) return 'grabbing';
@@ -480,6 +492,7 @@ export function InfiniteCanvas() {
                 isSelected={selectedNodeIds.has(node.id)}
                 activeSourceHandleId={activeSourceHandleId}
                 highlightedTargetHandleId={highlightedTargetHandleId}
+                portColors={portColorMap}
                 onSelect={(e) => handleNodeSelect(node.id, e)}
                 onUpdate={(updates) => updateNode(node.id, updates)}
                 onDelete={() => deleteNode(node.id)}

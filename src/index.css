@@ -89,10 +89,10 @@
 }
 
 .port-handle {
-  width: 28px;
-  height: 28px;
+  width: 20px;
+  height: 20px;
   border-radius: 9999px;
-  background: hsl(240 6% 14%);
+  background: hsl(var(--card));
   cursor: crosshair;
   transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
   display: flex;
@@ -103,12 +103,12 @@
 
 .port-handle::after {
   content: '';
-  width: 14px;
-  height: 14px;
+  width: 10px;
+  height: 10px;
   border-radius: 9999px;
   background: transparent;
-  border: 3px solid hsl(var(--port-color));
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  border: 2.5px solid var(--port-dynamic-color, hsl(var(--port-color)));
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
 .port-handle::before {
@@ -125,7 +125,7 @@
 }
 
 .port-handle:hover::after {
-  box-shadow: 0 0 8px hsl(var(--port-color) / 0.6);
+  box-shadow: 0 0 6px var(--port-dynamic-color, hsl(var(--port-color) / 0.6));
 }
 
 .port-input,
@@ -133,21 +133,26 @@
   /* unified — both purple */
 }
 
+.port-handle.is-connected::after {
+  background: var(--port-dynamic-color, hsl(var(--port-color)));
+  border-color: var(--port-dynamic-color, hsl(var(--port-color)));
+}
+
 .port-handle.is-source {
-  box-shadow: 0 0 0 4px hsl(var(--port-color) / 0.18), 0 0 14px hsl(var(--port-color) / 0.35);
+  box-shadow: 0 0 0 3px hsl(var(--port-color) / 0.18), 0 0 10px hsl(var(--port-color) / 0.35);
 }
 
 .port-handle.is-source::after {
-  box-shadow: 0 0 10px hsl(var(--port-color) / 0.6);
+  box-shadow: 0 0 8px hsl(var(--port-color) / 0.6);
 }
 
 .port-handle.is-highlighted {
-  box-shadow: 0 0 0 4px hsl(var(--port-highlight) / 0.2), 0 0 14px hsl(var(--port-highlight) / 0.4);
+  box-shadow: 0 0 0 3px hsl(var(--port-highlight) / 0.2), 0 0 10px hsl(var(--port-highlight) / 0.4);
 }
 
 .port-handle.is-highlighted::after {
   background: hsl(var(--port-highlight));
-  box-shadow: 0 0 10px hsl(var(--port-highlight) / 0.6);
+  box-shadow: 0 0 8px hsl(var(--port-highlight) / 0.6);
 }
 
 ::-webkit-scrollbar {

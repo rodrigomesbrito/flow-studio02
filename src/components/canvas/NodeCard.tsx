@@ -8,6 +8,7 @@ interface NodeCardProps {
   isSelected: boolean;
   activeSourceHandleId: string | null;
   highlightedTargetHandleId: string | null;
+  portColors: Map<string, string>;
   onSelect: (e?: React.MouseEvent) => void;
   onUpdate: (updates: Partial<CanvasNode>) => void;
   onDelete: () => void;
@@ -22,6 +23,7 @@ export function NodeCard({
   isSelected,
   activeSourceHandleId,
   highlightedTargetHandleId,
+  portColors,
   onSelect,
   onUpdate,
   onDelete,
@@ -84,10 +86,10 @@ export function NodeCard({
 
   const getPortPosition = (side: string): React.CSSProperties => {
     switch (side) {
-      case 'left': return { left: -14, top: '50%', transform: 'translateY(-50%)', '--port-hover-transform': 'translateY(-50%) scale(1.18)' } as React.CSSProperties;
-      case 'right': return { right: -14, top: '50%', transform: 'translateY(-50%)', '--port-hover-transform': 'translateY(-50%) scale(1.18)' } as React.CSSProperties;
-      case 'top': return { top: -14, left: '50%', transform: 'translateX(-50%)', '--port-hover-transform': 'translateX(-50%) scale(1.18)' } as React.CSSProperties;
-      case 'bottom': return { bottom: -14, left: '50%', transform: 'translateX(-50%)', '--port-hover-transform': 'translateX(-50%) scale(1.18)' } as React.CSSProperties;
+      case 'left': return { left: -10, top: '50%', transform: 'translateY(-50%)', '--port-hover-transform': 'translateY(-50%) scale(1.18)' } as React.CSSProperties;
+      case 'right': return { right: -10, top: '50%', transform: 'translateY(-50%)', '--port-hover-transform': 'translateY(-50%) scale(1.18)' } as React.CSSProperties;
+      case 'top': return { top: -10, left: '50%', transform: 'translateX(-50%)', '--port-hover-transform': 'translateX(-50%) scale(1.18)' } as React.CSSProperties;
+      case 'bottom': return { bottom: -10, left: '50%', transform: 'translateX(-50%)', '--port-hover-transform': 'translateX(-50%) scale(1.18)' } as React.CSSProperties;
       default: return {};
     }
   };
@@ -107,6 +109,8 @@ export function NodeCard({
       {node.ports.map((port) => {
         const isSource = activeSourceHandleId === port.id;
         const isHighlighted = highlightedTargetHandleId === port.id;
+        const connColor = portColors.get(port.id);
+        const isConnected = !!connColor;
 
         return (
           <button
@@ -118,8 +122,12 @@ export function NodeCard({
               port.type === 'input' ? 'port-input' : 'port-output',
               isSource ? 'is-source' : '',
               isHighlighted ? 'is-highlighted' : '',
+              isConnected ? 'is-connected' : '',
             ].filter(Boolean).join(' ')}
-            style={getPortPosition(port.side)}
+            style={{
+              ...getPortPosition(port.side),
+              ...(connColor ? { '--port-dynamic-color': connColor } as React.CSSProperties : {}),
+            }}
             onMouseDown={(e) => handlePortMouseDown(e, port.id)}
           />
         );
