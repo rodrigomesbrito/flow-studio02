@@ -105,7 +105,7 @@ export function useCanvasState() {
       return nextNodes;
     });
 
-    setSelectedNodeId(duplicatedNode.id);
+    setSelectedNodeIds(new Set([duplicatedNode.id]));
   }, [connections, nodes, pushHistory]);
 
   const addConnection = useCallback((fromNodeId: string, fromPortId: string, toNodeId: string, toPortId: string) => {
