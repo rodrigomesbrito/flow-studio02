@@ -37,7 +37,6 @@ export function InfiniteCanvas() {
     return 'default';
   };
 
-  // Convert screen coords to canvas coords
   const screenToCanvas = useCallback((clientX: number, clientY: number) => {
     const rect = canvasRef.current!.getBoundingClientRect();
     return {
@@ -62,19 +61,20 @@ export function InfiniteCanvas() {
     }
   }, [nodes]);
 
-  // Mouse down on canvas
+  const beginPan = useCallback((clientX: number, clientY: number) => {
+    setIsPanning(true);
+    panStart.current = { x: clientX, y: clientY };
+    offsetStart.current = { ...offset };
+  }, [offset]);
+
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
-    // Middle mouse always pans
     if (e.button === 1) {
-      setIsPanning(true);
-      panStart.current = { x: e.clientX, y: e.clientY };
-      offsetStart.current = { ...offset };
+      beginPan(e.clientX, e.clientY);
       return;
     }
 
     if (e.button !== 0) return;
 
-    // Click on canvas background
     const target = e.target as HTMLElement;
     const isBackground = target === canvasRef.current || target === canvasRef.current?.firstElementChild;
 
@@ -84,23 +84,21 @@ export function InfiniteCanvas() {
     }
 
     if (activeTool === 'hand' && isBackground) {
-      setIsPanning(true);
-      panStart.current = { x: e.clientX, y: e.clientY };
-      offsetStart.current = { ...offset };
+      beginPan(e.clientX, e.clientY);
     }
-  }, [offset, setSelectedNodeId, activeTool]);
+  }, [activeTool, beginPan, setSelectedNodeId]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handleMouseMove = useCallback((clientX: number, clientY: number) => {
     if (isPanning) {
       setOffset({
-        x: offsetStart.current.x + (e.clientX - panStart.current.x),
-        y: offsetStart.current.y + (e.clientY - panStart.current.y),
+        x: offsetStart.current.x + (clientX - panStart.current.x),
+        y: offsetStart.current.y + (clientY - panStart.current.y),
       });
     }
 
     if (draggingNodeId) {
-      const dx = (e.clientX - dragStart.current.x) / zoom;
-      const dy = (e.clientY - dragStart.current.y) / zoom;
+      const dx = (clientX - dragStart.current.x) / zoom;
+      const dy = (clientY - dragStart.current.y) / zoom;
       updateNode(draggingNodeId, {
         position: { x: nodeStartPos.current.x + dx, y: nodeStartPos.current.y + dy }
       });
@@ -109,22 +107,60 @@ export function InfiniteCanvas() {
     if (connectionDrag.current) {
       const fromPos = getPortWorldPos(connectionDrag.current.nodeId, connectionDrag.current.portId);
       if (fromPos) {
-        const toPos = screenToCanvas(e.clientX, e.clientY);
+        const toPos = screenToCanvas(clientX, clientY);
         setTempConnection({ fromX: fromPos.x, fromY: fromPos.y, toX: toPos.x, toY: toPos.y });
       }
     }
-  }, [isPanning, draggingNodeId, zoom, updateNode, setOffset, getPortWorldPos, screenToCanvas]);
+  }, [draggingNodeId, getPortWorldPos, isPanning, screenToCanvas, setOffset, updateNode, zoom]);
 
-  const handleMouseUp = useCallback(() => {
+  const finishConnectionDrag = useCallback((clientX: number, clientY: number) => {
+    if (!connectionDrag.current) return;
+
+    const hoveredElement = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    const targetPort = hoveredElement?.closest('[data-port-id][data-node-id][data-port-type="input"]') as HTMLElement | null;
+
+    if (targetPort) {
+      const targetNodeId = targetPort.dataset.nodeId;
+      const targetPortId = targetPort.dataset.portId;
+
+      if (targetNodeId && targetPortId && targetNodeId !== connectionDrag.current.nodeId) {
+        addConnection(connectionDrag.current.nodeId, connectionDrag.current.portId, targetNodeId, targetPortId);
+      }
+    }
+
+    connectionDrag.current = null;
+    setTempConnection(null);
+  }, [addConnection]);
+
+  const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
+    handleMouseMove(e.clientX, e.clientY);
+  }, [handleMouseMove]);
+
+  const handleCanvasMouseUp = useCallback((e: React.MouseEvent) => {
     setIsPanning(false);
     setDraggingNodeId(null);
-    if (connectionDrag.current) {
-      connectionDrag.current = null;
-      setTempConnection(null);
-    }
-  }, []);
+    finishConnectionDrag(e.clientX, e.clientY);
+  }, [finishConnectionDrag]);
 
-  // Zoom with wheel
+  useEffect(() => {
+    const handleWindowMouseMove = (e: MouseEvent) => handleMouseMove(e.clientX, e.clientY);
+    const handleWindowMouseUp = (e: MouseEvent) => {
+      setIsPanning(false);
+      setDraggingNodeId(null);
+      finishConnectionDrag(e.clientX, e.clientY);
+    };
+
+    if (draggingNodeId || connectionDrag.current || isPanning) {
+      window.addEventListener('mousemove', handleWindowMouseMove);
+      window.addEventListener('mouseup', handleWindowMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+    };
+  }, [draggingNodeId, finishConnectionDrag, handleMouseMove, isPanning]);
+
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
@@ -139,9 +175,8 @@ export function InfiniteCanvas() {
     setZoom(newZoom);
   }, [zoom, offset, setOffset, setZoom]);
 
-  // Node drag (works in cursor mode)
   const handleNodeDragStart = useCallback((nodeId: string, startMouse: Position) => {
-    if (activeTool === 'hand') return;
+    if (activeTool === 'hand' || activeTool === 'connect') return;
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
     setDraggingNodeId(nodeId);
@@ -149,20 +184,15 @@ export function InfiniteCanvas() {
     nodeStartPos.current = { ...node.position };
   }, [nodes, activeTool]);
 
-  // Port connection - works in both cursor and connect modes
   const handlePortDragStart = useCallback((nodeId: string, portId: string) => {
+    if (activeTool === 'hand') return;
     connectionDrag.current = { nodeId, portId };
-  }, []);
-
-  const handlePortDragEnd = useCallback((nodeId: string, portId: string) => {
-    if (connectionDrag.current && connectionDrag.current.nodeId !== nodeId) {
-      addConnection(connectionDrag.current.nodeId, connectionDrag.current.portId, nodeId, portId);
+    const fromPos = getPortWorldPos(nodeId, portId);
+    if (fromPos) {
+      setTempConnection({ fromX: fromPos.x, fromY: fromPos.y, toX: fromPos.x, toY: fromPos.y });
     }
-    connectionDrag.current = null;
-    setTempConnection(null);
-  }, [addConnection]);
+  }, [activeTool, getPortWorldPos]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
@@ -183,6 +213,8 @@ export function InfiniteCanvas() {
       if (e.key === 'h' || e.key === 'H') setActiveTool('hand');
       if (e.key === 'c' && !e.metaKey && !e.ctrlKey) setActiveTool('connect');
       if (e.key === 'Escape') {
+        connectionDrag.current = null;
+        setTempConnection(null);
         setSelectedNodeId(null);
         setSelectedConnectionId(null);
       }
@@ -200,9 +232,8 @@ export function InfiniteCanvas() {
         className="absolute inset-0 ml-14 canvas-grid"
         style={{ cursor: getCursorStyle() }}
         onMouseDown={handleCanvasMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseMove={handleCanvasMouseMove}
+        onMouseUp={handleCanvasMouseUp}
         onWheel={handleWheel}
       >
         <div
@@ -218,7 +249,10 @@ export function InfiniteCanvas() {
             selectedConnectionId={selectedConnectionId}
             onSelectConnection={setSelectedConnectionId}
             onUpdateConnectionColor={updateConnectionColor}
-            onDeleteConnection={(id) => { deleteConnection(id); setSelectedConnectionId(null); }}
+            onDeleteConnection={(id) => {
+              deleteConnection(id);
+              setSelectedConnectionId(null);
+            }}
           />
 
           {nodes.map(node => (
@@ -227,13 +261,15 @@ export function InfiniteCanvas() {
               node={node}
               zoom={zoom}
               isSelected={selectedNodeId === node.id}
-              onSelect={() => { setSelectedNodeId(node.id); setSelectedConnectionId(null); }}
+              onSelect={() => {
+                setSelectedNodeId(node.id);
+                setSelectedConnectionId(null);
+              }}
               onUpdate={(updates) => updateNode(node.id, updates)}
               onDelete={() => deleteNode(node.id)}
               onDuplicate={() => duplicateNode(node.id)}
               onDragStart={handleNodeDragStart}
               onPortDragStart={handlePortDragStart}
-              onPortDragEnd={handlePortDragEnd}
             />
           ))}
         </div>
@@ -252,3 +288,4 @@ export function InfiniteCanvas() {
     </div>
   );
 }
+
