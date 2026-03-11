@@ -218,6 +218,7 @@ export function InfiniteCanvas() {
   const handlePortDragStart = useCallback((nodeId: string, portId: string) => {
     if (activeTool === 'hand') return;
     connectionDragRef.current = { nodeId, portId };
+    setIsConnecting(true);
     const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
     if (!sourceNode) return;
 
