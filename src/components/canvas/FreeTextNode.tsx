@@ -6,10 +6,12 @@ interface FreeTextNodeProps {
   node: CanvasNode;
   zoom: number;
   isSelected: boolean;
+  autoEdit?: boolean;
+  onAutoEditConsumed?: () => void;
   onSelect: (e?: React.MouseEvent) => void;
   onUpdate: (updates: Partial<CanvasNode>) => void;
   onDelete: () => void;
-  onDragStart: (nodeId: string, startMouse: Position) => void;
+  onDragStart: (nodeId: string, startMouse: Position, altKey?: boolean) => void;
 }
 
 const DEFAULT_TEXT_STYLE: TextStyle = {
