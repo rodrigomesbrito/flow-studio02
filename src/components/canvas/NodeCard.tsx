@@ -6,6 +6,8 @@ interface NodeCardProps {
   node: CanvasNode;
   zoom: number;
   isSelected: boolean;
+  activeSourceHandleId: string | null;
+  highlightedTargetHandleId: string | null;
   onSelect: () => void;
   onUpdate: (updates: Partial<CanvasNode>) => void;
   onDelete: () => void;
@@ -15,8 +17,17 @@ interface NodeCardProps {
 }
 
 export function NodeCard({
-  node, zoom, isSelected, onSelect, onUpdate, onDelete, onDuplicate,
-  onDragStart, onPortDragStart,
+  node,
+  zoom,
+  isSelected,
+  activeSourceHandleId,
+  highlightedTargetHandleId,
+  onSelect,
+  onUpdate,
+  onDelete,
+  onDuplicate,
+  onDragStart,
+  onPortDragStart,
 }: NodeCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
@@ -53,7 +64,7 @@ export function NodeCard({
 
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
-  }, [node.size, zoom, onUpdate]);
+  }, [node.size, onUpdate, zoom]);
 
   const handlePortMouseDown = useCallback((e: React.MouseEvent, portId: string) => {
     e.stopPropagation();
@@ -73,10 +84,10 @@ export function NodeCard({
 
   const getPortPosition = (side: string): React.CSSProperties => {
     switch (side) {
-      case 'left': return { left: -6, top: '50%', transform: 'translateY(-50%)' };
-      case 'right': return { right: -6, top: '50%', transform: 'translateY(-50%)' };
-      case 'top': return { top: -6, left: '50%', transform: 'translateX(-50%)' };
-      case 'bottom': return { bottom: -6, left: '50%', transform: 'translateX(-50%)' };
+      case 'left': return { left: -7, top: '50%', transform: 'translateY(-50%)' };
+      case 'right': return { right: -7, top: '50%', transform: 'translateY(-50%)' };
+      case 'top': return { top: -7, left: '50%', transform: 'translateX(-50%)' };
+      case 'bottom': return { bottom: -7, left: '50%', transform: 'translateX(-50%)' };
       default: return {};
     }
   };
@@ -93,17 +104,27 @@ export function NodeCard({
       }}
       onMouseDown={handleMouseDown}
     >
-      {/* Connection handles */}
-      {node.ports.map(port => (
-        <div
-          key={port.id}
-          className={`port-handle absolute ${port.type === 'input' ? 'port-input' : 'port-output'}`}
-          style={getPortPosition(port.side)}
-          onMouseDown={(e) => handlePortMouseDown(e, port.id)}
-        />
-      ))}
+      {node.ports.map((port) => {
+        const isSource = activeSourceHandleId === port.id;
+        const isHighlighted = highlightedTargetHandleId === port.id;
 
-      {/* Header */}
+        return (
+          <button
+            key={port.id}
+            type="button"
+            aria-label={`${port.type === 'input' ? 'Entrada' : 'Saída'} do node ${node.title}`}
+            className={[
+              'port-handle absolute',
+              port.type === 'input' ? 'port-input' : 'port-output',
+              isSource ? 'is-source' : '',
+              isHighlighted ? 'is-highlighted' : '',
+            ].filter(Boolean).join(' ')}
+            style={getPortPosition(port.side)}
+            onMouseDown={(e) => handlePortMouseDown(e, port.id)}
+          />
+        );
+      })}
+
       <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
         <div className="flex items-center gap-2">
           <GripVertical size={14} className="text-muted-foreground cursor-grab" />
@@ -134,7 +155,6 @@ export function NodeCard({
         </div>
       </div>
 
-      {/* Content */}
       <div className="p-3 h-[calc(100%-42px)] overflow-hidden">
         {node.type === 'text' && (
           <textarea
@@ -159,7 +179,6 @@ export function NodeCard({
         )}
       </div>
 
-      {/* Resize handle */}
       <div
         className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
         onMouseDown={handleResizeStart}

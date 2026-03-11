@@ -42,6 +42,7 @@
     --connection-line: 270 60% 65%;
     --port-color: 160 60% 50%;
     --port-output: 270 60% 65%;
+    --port-highlight: 48 96% 62%;
 
     --sidebar-background: 240 6% 7%;
     --sidebar-foreground: 240 5% 55%;
@@ -65,20 +66,18 @@
   }
 }
 
-/* Canvas grid pattern */
 .canvas-grid {
   background-color: hsl(var(--canvas-bg));
   background-image: radial-gradient(circle, hsl(var(--canvas-dot)) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
-/* Node card styles */
 .node-card {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--node-border));
   border-radius: var(--radius);
   box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.03);
-  transition: box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .node-card:hover {
@@ -90,38 +89,57 @@
   box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3), 0 8px 32px -4px rgba(0, 0, 0, 0.5);
 }
 
-/* Port styles */
-.port {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+.port-handle {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
   border: 2px solid hsl(var(--card));
   cursor: crosshair;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
 }
 
-.port:hover {
-  transform: scale(1.5);
-  border-color: transparent;
+.port-handle::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 9999px;
+}
+
+.port-handle:hover,
+.port-handle.is-source,
+.port-handle.is-highlighted {
+  transform: scale(1.18);
 }
 
 .port-input {
   background: hsl(var(--port-color));
+  box-shadow: 0 0 0 0 hsl(var(--port-color) / 0);
 }
 
 .port-input:hover {
-  box-shadow: 0 0 12px hsl(var(--port-color) / 0.6), 0 0 4px hsl(var(--port-color) / 0.3);
+  box-shadow: 0 0 0 5px hsl(var(--port-color) / 0.16), 0 0 14px hsl(var(--port-color) / 0.45);
 }
 
 .port-output {
   background: hsl(var(--port-output));
+  box-shadow: 0 0 0 0 hsl(var(--port-output) / 0);
 }
 
 .port-output:hover {
-  box-shadow: 0 0 12px hsl(var(--port-output) / 0.6), 0 0 4px hsl(var(--port-output) / 0.3);
+  box-shadow: 0 0 0 5px hsl(var(--port-output) / 0.16), 0 0 14px hsl(var(--port-output) / 0.45);
 }
 
-/* Scrollbar */
+.port-handle.is-source {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 6px hsl(var(--primary) / 0.18), 0 0 18px hsl(var(--primary) / 0.45);
+}
+
+.port-handle.is-highlighted {
+  background: hsl(var(--port-highlight));
+  border-color: hsl(var(--foreground));
+  box-shadow: 0 0 0 6px hsl(var(--port-highlight) / 0.2), 0 0 18px hsl(var(--port-highlight) / 0.5);
+}
+
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -133,7 +151,6 @@
   border-radius: 3px;
 }
 
-/* Connection line animation */
 @keyframes dash-flow {
   to {
     stroke-dashoffset: -20;
