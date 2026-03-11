@@ -81,7 +81,11 @@ export function useCanvasState() {
       return nextNodes;
     });
 
-    setSelectedNodeId((current) => (current === id ? null : current));
+    setSelectedNodeIds((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
   }, [pushHistory]);
 
   const duplicateNode = useCallback((id: string) => {
