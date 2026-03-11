@@ -1,6 +1,6 @@
 import { CanvasNode, Port, Position } from '@/types/canvas';
 
-export const DEFAULT_EDGE_COLOR = 'hsl(160 84% 39%)'; // #10b981 equivalent
+export const DEFAULT_EDGE_COLOR = '#a855f7';
 export const HANDLE_HIT_RADIUS = 18;
 
 export interface HandlePosition {

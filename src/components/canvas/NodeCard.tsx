@@ -84,10 +84,10 @@ export function NodeCard({
 
   const getPortPosition = (side: string): React.CSSProperties => {
     switch (side) {
-      case 'left': return { left: -7, top: '50%', transform: 'translateY(-50%)' };
-      case 'right': return { right: -7, top: '50%', transform: 'translateY(-50%)' };
-      case 'top': return { top: -7, left: '50%', transform: 'translateX(-50%)' };
-      case 'bottom': return { bottom: -7, left: '50%', transform: 'translateX(-50%)' };
+      case 'left': return { left: -7, top: '50%', transform: 'translateY(-50%)', '--port-hover-transform': 'translateY(-50%) scale(1.18)' } as React.CSSProperties;
+      case 'right': return { right: -7, top: '50%', transform: 'translateY(-50%)', '--port-hover-transform': 'translateY(-50%) scale(1.18)' } as React.CSSProperties;
+      case 'top': return { top: -7, left: '50%', transform: 'translateX(-50%)', '--port-hover-transform': 'translateX(-50%) scale(1.18)' } as React.CSSProperties;
+      case 'bottom': return { bottom: -7, left: '50%', transform: 'translateX(-50%)', '--port-hover-transform': 'translateX(-50%) scale(1.18)' } as React.CSSProperties;
       default: return {};
     }
   };

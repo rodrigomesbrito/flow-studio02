@@ -130,10 +130,10 @@ export function ConnectionLines({ connections, nodes, tempConnection, selectedCo
     <svg
       style={{
         position: 'absolute',
-        top: -10000,
-        left: -10000,
-        width: 20000,
-        height: 20000,
+        top: 0,
+        left: 0,
+        width: 1,
+        height: 1,
         pointerEvents: 'none',
         overflow: 'visible',
       }}
@@ -174,6 +174,7 @@ export function ConnectionLines({ connections, nodes, tempConnection, selectedCo
         <Edge
           x1={tempConnection.fromX} y1={tempConnection.fromY}
           x2={tempConnection.toX} y2={tempConnection.toY}
+          color="#a855f7"
           isTemp
         />
       )}

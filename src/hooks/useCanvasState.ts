@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { CanvasNode, Connection, Position, NodeType } from '@/types/canvas';
 
-const DEFAULT_CONNECTION_COLOR = 'hsl(160 84% 39%)';
+const DEFAULT_CONNECTION_COLOR = '#a855f7';
 
 const createDefaultPorts = () => [
   { id: crypto.randomUUID(), side: 'left' as const, type: 'input' as const },
