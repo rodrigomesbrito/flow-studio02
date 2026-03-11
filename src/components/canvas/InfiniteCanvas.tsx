@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { useCanvasState } from '@/hooks/useCanvasState';
-import { CanvasSidebar } from './CanvasSidebar';
+import { AppSidebar } from '@/components/AppSidebar';
 import { BottomToolbar } from './BottomToolbar';
 import { NodeCard } from './NodeCard';
 import { ConnectionLines } from './ConnectionLines';
