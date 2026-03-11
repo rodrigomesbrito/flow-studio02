@@ -261,7 +261,7 @@ export function InfiniteCanvas() {
   }, [selectedNodeId, selectedConnectionId, deleteNode, deleteConnection, undo, redo, setSelectedNodeId, resetConnectionDrag]);
 
   return (
-    <div className="w-screen h-screen overflow-hidden relative">
+    <div className="w-full h-screen overflow-hidden relative">
 
       <div
         ref={canvasRef}
