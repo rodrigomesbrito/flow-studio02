@@ -5,6 +5,8 @@ import { BottomToolbar } from './BottomToolbar';
 import { NodeCard } from './NodeCard';
 import { FreeTextNode } from './FreeTextNode';
 import { ConnectionLines } from './ConnectionLines';
+import { MiniMap } from './MiniMap';
+import { SaveIndicator } from './SaveIndicator';
 import { Position, CanvasTool } from '@/types/canvas';
 import { DEFAULT_EDGE_COLOR } from './connection-utils';
 import { getHandleWorldPosition, findClosestCompatibleHandle, HANDLE_HIT_RADIUS } from './connection-utils';
@@ -29,9 +31,10 @@ export function InfiniteCanvas() {
   const {
     nodes, connections, offset, zoom, selectedNodeIds,
     setOffset, setZoom, setSelectedNodeIds,
-    addNode, updateNode, deleteNode, duplicateNode,
+    addNode, addNodeAt, updateNode, deleteNode, duplicateNode, duplicateNodes,
+    copyNodes, pasteNodes,
     addConnection, deleteConnection, updateConnectionColor,
-    undo, redo, zoomIn, zoomOut, resetView,
+    undo, redo, zoomIn, zoomOut, resetView, centerOnContent,
   } = useCanvasState();
 
   const { registerAddNode, unregisterAddNode } = useCanvasTools();
@@ -53,6 +56,9 @@ export function InfiniteCanvas() {
   const dragStart = useRef<Position>({ x: 0, y: 0 });
   const nodeStartPositions = useRef<Map<string, Position>>(new Map());
 
+  // Alt+drag duplicate
+  const altDragDuplicated = useRef(false);
+
   // Marquee selection
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
   const isMarqueeActive = useRef(false);
@@ -67,8 +73,14 @@ export function InfiniteCanvas() {
   const [spaceHeld, setSpaceHeld] = useState(false);
   const toolBeforeSpace = useRef<CanvasTool>('cursor');
 
+  // Track newly created freetext node for auto-edit
+  const [autoEditNodeId, setAutoEditNodeId] = useState<string | null>(null);
+
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
+
+  const connectionsRef = useRef(connections);
+  connectionsRef.current = connections;
 
   const activeSourceHandleId = connectionDragRef.current?.portId ?? null;
 
@@ -84,6 +96,23 @@ export function InfiniteCanvas() {
     });
     return map;
   }, [connections]);
+
+  // Center on content when nodes first appear
+  const hasCenteredRef = useRef(false);
+  useEffect(() => {
+    if (nodes.length > 0 && !hasCenteredRef.current) {
+      hasCenteredRef.current = true;
+      centerOnContent();
+    }
+  }, [nodes.length, centerOnContent]);
+
+  // Canvas dimensions for minimap
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
+  useEffect(() => {
+    const handleResize = () => setCanvasDimensions({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const getCursorStyle = () => {
     if (isPanning) return 'grabbing';
@@ -107,6 +136,18 @@ export function InfiniteCanvas() {
     panStart.current = { x: clientX, y: clientY };
     offsetStart.current = { ...offset };
   }, [offset]);
+
+  // Double-click on canvas background to create freetext
+  const handleCanvasDoubleClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const isBackground = target === canvasRef.current || target === canvasRef.current?.firstElementChild;
+    if (!isBackground) return;
+    if (effectiveTool !== 'cursor') return;
+
+    const canvasPos = screenToCanvas(e.clientX, e.clientY);
+    const nodeId = addNodeAt('freetext', canvasPos);
+    setAutoEditNodeId(nodeId);
+  }, [effectiveTool, screenToCanvas, addNodeAt]);
 
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 1) {
@@ -273,6 +314,7 @@ export function InfiniteCanvas() {
   const handleCanvasMouseUp = useCallback((e: React.MouseEvent) => {
     setIsPanning(false);
     setDraggingNodeId(null);
+    altDragDuplicated.current = false;
     finishMarqueeSelection();
     finishConnectionDrag(e.clientX, e.clientY);
   }, [finishConnectionDrag, finishMarqueeSelection]);
@@ -285,6 +327,7 @@ export function InfiniteCanvas() {
     const handleWindowMouseUp = (e: MouseEvent) => {
       setIsPanning(false);
       setDraggingNodeId(null);
+      altDragDuplicated.current = false;
       finishMarqueeSelection();
       finishConnectionDrag(e.clientX, e.clientY);
     };
@@ -312,14 +355,36 @@ export function InfiniteCanvas() {
     setZoom(newZoom);
   }, [zoom, offset, setOffset, setZoom]);
 
-  const handleNodeDragStart = useCallback((nodeId: string, startMouse: Position) => {
+  const handleNodeDragStart = useCallback((nodeId: string, startMouse: Position, altKey?: boolean) => {
     if (effectiveTool === 'hand') return;
     const node = nodes.find((item) => item.id === nodeId);
     if (!node) return;
 
     // Determine which nodes to drag
-    const dragging = selectedNodeIds.has(nodeId) ? selectedNodeIds : new Set([nodeId]);
-    
+    let dragging = selectedNodeIds.has(nodeId) ? selectedNodeIds : new Set([nodeId]);
+
+    // Alt+drag: duplicate first, then drag the duplicates
+    if (altKey && !altDragDuplicated.current) {
+      altDragDuplicated.current = true;
+      const idMap = duplicateNodes(dragging, { x: 0, y: 0 });
+      // Now select and drag the new nodes
+      const newIds = new Set(Array.from(dragging).map((id) => idMap.get(id) || id));
+      dragging = newIds;
+      setSelectedNodeIds(newIds);
+
+      // Store start positions for the NEW nodes (they have same positions as originals)
+      nodeStartPositions.current = new Map();
+      const latestNodes = nodesRef.current;
+      newIds.forEach((id) => {
+        const n = latestNodes.find((item) => item.id === id);
+        if (n) nodeStartPositions.current.set(id, { ...n.position });
+      });
+
+      setDraggingNodeId(Array.from(newIds)[0]);
+      dragStart.current = startMouse;
+      return;
+    }
+
     // Store start positions for all dragged nodes
     nodeStartPositions.current = new Map();
     dragging.forEach((id) => {
@@ -334,7 +399,7 @@ export function InfiniteCanvas() {
 
     setDraggingNodeId(nodeId);
     dragStart.current = startMouse;
-  }, [effectiveTool, nodes, selectedNodeIds, setSelectedNodeIds]);
+  }, [effectiveTool, nodes, selectedNodeIds, setSelectedNodeIds, duplicateNodes]);
 
   const handlePortDragStart = useCallback((nodeId: string, portId: string) => {
     if (effectiveTool === 'hand') return;
@@ -366,7 +431,7 @@ export function InfiniteCanvas() {
     }
   }, [setSelectedNodeIds]);
 
-  // Keyboard shortcuts including space-key panning
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
@@ -381,6 +446,7 @@ export function InfiniteCanvas() {
 
       if (isInput) return;
 
+      // Delete / Backspace
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedConnectionId) {
           deleteConnection(selectedConnectionId);
@@ -390,13 +456,35 @@ export function InfiniteCanvas() {
           setSelectedNodeIds(new Set());
         }
       }
+
+      // Ctrl+Z / Ctrl+Shift+Z
       if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
         e.preventDefault();
         if (e.shiftKey) redo(); else undo();
       }
-      if (e.key === 'v' || e.key === 'V') setActiveTool('cursor');
-      if (e.key === 'h' || e.key === 'H') setActiveTool('hand');
-      if (e.key === 'c' && !e.metaKey && !e.ctrlKey) setActiveTool('connect');
+
+      // Ctrl+C copy
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+        if (selectedNodeIds.size > 0) {
+          copyNodes(selectedNodeIds);
+        }
+      }
+
+      // Ctrl+V paste
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        e.preventDefault();
+        pasteNodes();
+      }
+
+      // Tool shortcuts (only without modifiers)
+      if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (e.key === 'v' || e.key === 'V') setActiveTool('cursor');
+        if (e.key === 'h' || e.key === 'H') setActiveTool('hand');
+        if (e.key === 'c' || e.key === 'C') setActiveTool('connect');
+        if (e.key === 't' || e.key === 'T') addNode('text');
+        if (e.key === 'i' || e.key === 'I') addNode('image');
+      }
+
       if (e.key === 'Escape') {
         resetConnectionDrag();
         setSelectedNodeIds(new Set());
@@ -416,7 +504,7 @@ export function InfiniteCanvas() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [selectedNodeIds, selectedConnectionId, deleteNode, deleteConnection, undo, redo, setSelectedNodeIds, resetConnectionDrag, activeTool]);
+  }, [selectedNodeIds, selectedConnectionId, deleteNode, deleteConnection, undo, redo, setSelectedNodeIds, resetConnectionDrag, activeTool, addNode, copyNodes, pasteNodes]);
 
   // Compute marquee box in screen coords for the overlay
   const marqueeStyle = selectionBox ? (() => {
@@ -429,8 +517,13 @@ export function InfiniteCanvas() {
     };
   })() : null;
 
+  // Save watch value (changes whenever nodes or connections change)
+  const saveWatchValue = useMemo(() => ({ n: nodes.length, c: connections.length, t: Date.now() }), [nodes, connections]);
+
   return (
     <div className="w-full h-screen overflow-hidden relative">
+      <SaveIndicator watchValue={saveWatchValue} />
+
       <div
         ref={canvasRef}
         className="absolute inset-0 canvas-grid overflow-hidden"
@@ -438,6 +531,7 @@ export function InfiniteCanvas() {
         onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleCanvasMouseMove}
         onMouseUp={handleCanvasMouseUp}
+        onDoubleClick={handleCanvasDoubleClick}
         onWheel={handleWheel}
       >
         <div
@@ -479,6 +573,8 @@ export function InfiniteCanvas() {
                 node={node}
                 zoom={zoom}
                 isSelected={selectedNodeIds.has(node.id)}
+                autoEdit={autoEditNodeId === node.id}
+                onAutoEditConsumed={() => setAutoEditNodeId(null)}
                 onSelect={(e) => handleNodeSelect(node.id, e)}
                 onUpdate={(updates) => updateNode(node.id, updates)}
                 onDelete={() => deleteNode(node.id)}
@@ -504,6 +600,16 @@ export function InfiniteCanvas() {
           )}
         </div>
       </div>
+
+      <MiniMap
+        nodes={nodes}
+        connections={connections}
+        offset={offset}
+        zoom={zoom}
+        canvasWidth={canvasDimensions.width}
+        canvasHeight={canvasDimensions.height}
+        onNavigate={setOffset}
+      />
 
       <BottomToolbar
         zoom={zoom}

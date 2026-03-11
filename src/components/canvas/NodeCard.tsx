@@ -13,7 +13,7 @@ interface NodeCardProps {
   onUpdate: (updates: Partial<CanvasNode>) => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  onDragStart: (nodeId: string, startMouse: Position) => void;
+  onDragStart: (nodeId: string, startMouse: Position, altKey?: boolean) => void;
   onPortDragStart: (nodeId: string, portId: string) => void;
 }
 
@@ -38,7 +38,7 @@ export function NodeCard({
     if ((e.target as HTMLElement).closest('.port-handle') || (e.target as HTMLElement).closest('.resize-handle') || (e.target as HTMLElement).closest('textarea') || (e.target as HTMLElement).closest('input')) return;
     e.stopPropagation();
     onSelect(e);
-    onDragStart(node.id, { x: e.clientX, y: e.clientY });
+    onDragStart(node.id, { x: e.clientX, y: e.clientY }, e.altKey);
   }, [node.id, onSelect, onDragStart]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {

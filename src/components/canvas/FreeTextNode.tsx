@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { CanvasNode, Position, TextStyle } from '@/types/canvas';
 import { Trash2, Bold, Italic, CaseSensitive, Plus, Minus } from 'lucide-react';
 
@@ -6,10 +6,12 @@ interface FreeTextNodeProps {
   node: CanvasNode;
   zoom: number;
   isSelected: boolean;
+  autoEdit?: boolean;
+  onAutoEditConsumed?: () => void;
   onSelect: (e?: React.MouseEvent) => void;
   onUpdate: (updates: Partial<CanvasNode>) => void;
   onDelete: () => void;
-  onDragStart: (nodeId: string, startMouse: Position) => void;
+  onDragStart: (nodeId: string, startMouse: Position, altKey?: boolean) => void;
 }
 
 const DEFAULT_TEXT_STYLE: TextStyle = {
@@ -23,6 +25,8 @@ export function FreeTextNode({
   node,
   zoom,
   isSelected,
+  autoEdit,
+  onAutoEditConsumed,
   onSelect,
   onUpdate,
   onDelete,
@@ -42,9 +46,17 @@ export function FreeTextNode({
     e.stopPropagation();
     onSelect(e);
     if (!isEditing) {
-      onDragStart(node.id, { x: e.clientX, y: e.clientY });
+      onDragStart(node.id, { x: e.clientX, y: e.clientY }, e.altKey);
     }
   }, [node.id, onSelect, onDragStart, isEditing]);
+
+  // Auto-edit when created via double-click
+  useEffect(() => {
+    if (autoEdit) {
+      setIsEditing(true);
+      onAutoEditConsumed?.();
+    }
+  }, [autoEdit, onAutoEditConsumed]);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
