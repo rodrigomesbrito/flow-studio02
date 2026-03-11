@@ -25,6 +25,8 @@ export function FreeTextNode({
   node,
   zoom,
   isSelected,
+  autoEdit,
+  onAutoEditConsumed,
   onSelect,
   onUpdate,
   onDelete,
