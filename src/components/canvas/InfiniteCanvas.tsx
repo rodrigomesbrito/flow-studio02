@@ -190,7 +190,7 @@ export function InfiniteCanvas() {
       window.removeEventListener('mousemove', handleWindowMouseMove);
       window.removeEventListener('mouseup', handleWindowMouseUp);
     };
-  }, [draggingNodeId, finishConnectionDrag, handleMouseMove, isPanning]);
+  }, [draggingNodeId, isConnecting, finishConnectionDrag, handleMouseMove, isPanning]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
