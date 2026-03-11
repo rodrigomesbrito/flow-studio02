@@ -89,12 +89,25 @@
 }
 
 .port-handle {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   border-radius: 9999px;
-  border: 2px solid hsl(var(--card));
+  background: hsl(var(--canvas-bg));
   cursor: crosshair;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+
+.port-handle::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: hsl(var(--port-color));
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .port-handle::before {
@@ -110,33 +123,31 @@
   transform: var(--port-hover-transform, scale(1.18));
 }
 
-.port-input {
-  background: hsl(var(--port-color));
-  box-shadow: 0 0 0 0 hsl(var(--port-color) / 0);
+.port-handle:hover::after {
+  box-shadow: 0 0 8px hsl(var(--port-color) / 0.6);
 }
 
-.port-input:hover {
-  box-shadow: 0 0 0 5px hsl(var(--port-color) / 0.16), 0 0 14px hsl(var(--port-color) / 0.45);
-}
-
+.port-input,
 .port-output {
-  background: hsl(var(--port-output));
-  box-shadow: 0 0 0 0 hsl(var(--port-output) / 0);
-}
-
-.port-output:hover {
-  box-shadow: 0 0 0 5px hsl(var(--port-output) / 0.16), 0 0 14px hsl(var(--port-output) / 0.45);
+  /* unified — both purple */
 }
 
 .port-handle.is-source {
-  border-color: hsl(var(--primary));
-  box-shadow: 0 0 0 6px hsl(var(--primary) / 0.18), 0 0 18px hsl(var(--primary) / 0.45);
+  box-shadow: 0 0 0 4px hsl(var(--port-color) / 0.18), 0 0 14px hsl(var(--port-color) / 0.35);
+}
+
+.port-handle.is-source::after {
+  box-shadow: 0 0 10px hsl(var(--port-color) / 0.6);
 }
 
 .port-handle.is-highlighted {
+  box-shadow: 0 0 0 4px hsl(var(--port-highlight) / 0.2), 0 0 14px hsl(var(--port-highlight) / 0.4);
+}
+
+.port-handle.is-highlighted::after {
   background: hsl(var(--port-highlight));
-  border-color: hsl(var(--foreground));
-  box-shadow: 0 0 0 6px hsl(var(--port-highlight) / 0.2), 0 0 18px hsl(var(--port-highlight) / 0.5);
+  box-shadow: 0 0 10px hsl(var(--port-highlight) / 0.6);
+}
 }
 
 ::-webkit-scrollbar {
