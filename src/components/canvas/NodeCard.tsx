@@ -1,30 +1,39 @@
 import { useRef, useState, useCallback } from 'react';
 import { MoreHorizontal, Copy, Trash2, GripVertical, Upload } from 'lucide-react';
-import { CanvasNode, Position, Port } from '@/types/canvas';
+import { CanvasNode, Position } from '@/types/canvas';
 
 interface NodeCardProps {
   node: CanvasNode;
   zoom: number;
   isSelected: boolean;
+  activeSourceHandleId: string | null;
+  highlightedTargetHandleId: string | null;
   onSelect: () => void;
   onUpdate: (updates: Partial<CanvasNode>) => void;
   onDelete: () => void;
   onDuplicate: () => void;
   onDragStart: (nodeId: string, startMouse: Position) => void;
-  onPortDragStart: (nodeId: string, portId: string, portType: Port['type']) => void;
-  onPortHover: (nodeId: string, portId: string, portType: Port['type']) => void;
-  onPortHoverLeave: (nodeId: string, portId: string) => void;
+  onPortDragStart: (nodeId: string, portId: string) => void;
 }
 
 export function NodeCard({
-  node, zoom, isSelected, onSelect, onUpdate, onDelete, onDuplicate,
-  onDragStart, onPortDragStart, onPortHover, onPortHoverLeave,
+  node,
+  zoom,
+  isSelected,
+  activeSourceHandleId,
+  highlightedTargetHandleId,
+  onSelect,
+  onUpdate,
+  onDelete,
+  onDuplicate,
+  onDragStart,
+  onPortDragStart,
 }: NodeCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.port') || (e.target as HTMLElement).closest('.resize-handle') || (e.target as HTMLElement).closest('textarea') || (e.target as HTMLElement).closest('input')) return;
+    if ((e.target as HTMLElement).closest('.port-handle') || (e.target as HTMLElement).closest('.resize-handle') || (e.target as HTMLElement).closest('textarea') || (e.target as HTMLElement).closest('input')) return;
     e.stopPropagation();
     onSelect();
     onDragStart(node.id, { x: e.clientX, y: e.clientY });
@@ -55,14 +64,13 @@ export function NodeCard({
 
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
-  }, [node.size, zoom, onUpdate]);
+  }, [node.size, onUpdate, zoom]);
 
-  const handlePortMouseDown = useCallback((e: React.MouseEvent, portId: string, portType: Port['type']) => {
+  const handlePortMouseDown = useCallback((e: React.MouseEvent, portId: string) => {
     e.stopPropagation();
     e.preventDefault();
-    onSelect();
-    onPortDragStart(node.id, portId, portType);
-  }, [node.id, onPortDragStart, onSelect]);
+    onPortDragStart(node.id, portId);
+  }, [node.id, onPortDragStart]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -76,10 +84,10 @@ export function NodeCard({
 
   const getPortPosition = (side: string): React.CSSProperties => {
     switch (side) {
-      case 'left': return { left: -6, top: '50%', transform: 'translateY(-50%)' };
-      case 'right': return { right: -6, top: '50%', transform: 'translateY(-50%)' };
-      case 'top': return { top: -6, left: '50%', transform: 'translateX(-50%)' };
-      case 'bottom': return { bottom: -6, left: '50%', transform: 'translateX(-50%)' };
+      case 'left': return { left: -7, top: '50%', transform: 'translateY(-50%)' };
+      case 'right': return { right: -7, top: '50%', transform: 'translateY(-50%)' };
+      case 'top': return { top: -7, left: '50%', transform: 'translateX(-50%)' };
+      case 'bottom': return { bottom: -7, left: '50%', transform: 'translateX(-50%)' };
       default: return {};
     }
   };
@@ -96,19 +104,26 @@ export function NodeCard({
       }}
       onMouseDown={handleMouseDown}
     >
-      {node.ports.map(port => (
-        <div
-          key={port.id}
-          data-port-id={port.id}
-          data-node-id={node.id}
-          data-port-type={port.type}
-          className={`port absolute ${port.type === 'input' ? 'port-input' : 'port-output'}`}
-          style={getPortPosition(port.side)}
-          onMouseDown={(e) => handlePortMouseDown(e, port.id, port.type)}
-          onMouseEnter={() => onPortHover(node.id, port.id, port.type)}
-          onMouseLeave={() => onPortHoverLeave(node.id, port.id)}
-        />
-      ))}
+      {node.ports.map((port) => {
+        const isSource = activeSourceHandleId === port.id;
+        const isHighlighted = highlightedTargetHandleId === port.id;
+
+        return (
+          <button
+            key={port.id}
+            type="button"
+            aria-label={`${port.type === 'input' ? 'Entrada' : 'Saída'} do node ${node.title}`}
+            className={[
+              'port-handle absolute',
+              port.type === 'input' ? 'port-input' : 'port-output',
+              isSource ? 'is-source' : '',
+              isHighlighted ? 'is-highlighted' : '',
+            ].filter(Boolean).join(' ')}
+            style={getPortPosition(port.side)}
+            onMouseDown={(e) => handlePortMouseDown(e, port.id)}
+          />
+        );
+      })}
 
       <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
         <div className="flex items-center gap-2">

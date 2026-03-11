@@ -1,5 +1,6 @@
 import { Connection, CanvasNode, CONNECTION_COLORS, hexToHsl } from '@/types/canvas';
 import { useMemo } from 'react';
+import { getHandleWorldPosition, getBezierPath, getBezierMidpoint, DEFAULT_EDGE_COLOR } from './connection-utils';
 
 interface ConnectionLinesProps {
   connections: Connection[];
@@ -11,48 +12,27 @@ interface ConnectionLinesProps {
   onDeleteConnection: (id: string) => void;
 }
 
-function getPortWorldPosition(node: CanvasNode, portId: string): { x: number; y: number } | null {
-  const port = node.ports.find(p => p.id === portId);
-  if (!port) return null;
-  const { x, y } = node.position;
-  const { width, height } = node.size;
-  switch (port.side) {
-    case 'left': return { x, y: y + height / 2 };
-    case 'right': return { x: x + width, y: y + height / 2 };
-    case 'top': return { x: x + width / 2, y };
-    case 'bottom': return { x: x + width / 2, y: y + height };
-    default: return null;
-  }
-}
-
-function bezierPath(x1: number, y1: number, x2: number, y2: number) {
-  const dx = Math.abs(x2 - x1);
-  const cp = Math.max(dx * 0.5, 56);
-  return `M ${x1} ${y1} C ${x1 + cp} ${y1}, ${x2 - cp} ${y2}, ${x2} ${y2}`;
-}
-
-function CurvedPath({ x1, y1, x2, y2, isTemp = false, color, isSelected = false, onClick }: {
-  x1: number; y1: number; x2: number; y2: number; isTemp?: boolean;
-  color?: string; isSelected?: boolean; onClick?: () => void;
+function Edge({ x1, y1, x2, y2, color, isTemp = false, isSelected = false, onClick }: {
+  x1: number; y1: number; x2: number; y2: number;
+  color?: string; isTemp?: boolean; isSelected?: boolean; onClick?: () => void;
 }) {
-  const d = bezierPath(x1, y1, x2, y2);
-  const lineColor = color || 'hsl(270 60% 65%)';
+  const d = getBezierPath(x1, y1, x2, y2);
+  const lineColor = color || DEFAULT_EDGE_COLOR;
 
   return (
     <g>
+      {/* Invisible wide hit area for clicking */}
       {!isTemp && (
         <path
           d={d}
           fill="none"
           stroke="transparent"
-          strokeWidth={20}
+          strokeWidth={24}
           style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick?.();
-          }}
+          onClick={(e) => { e.stopPropagation(); onClick?.(); }}
         />
       )}
+      {/* Glow / shadow layer */}
       <path
         d={d}
         fill="none"
@@ -62,6 +42,7 @@ function CurvedPath({ x1, y1, x2, y2, isTemp = false, color, isSelected = false,
         strokeLinecap="round"
         style={{ pointerEvents: 'none' }}
       />
+      {/* Main visible line */}
       <path
         d={d}
         fill="none"
@@ -73,11 +54,13 @@ function CurvedPath({ x1, y1, x2, y2, isTemp = false, color, isSelected = false,
         className={isTemp ? 'connection-line-animated' : ''}
         style={{ pointerEvents: 'none' }}
       />
+      {/* Animated dot flowing along edge */}
       {!isTemp && (
         <circle r="3" fill={lineColor} opacity="0.85" style={{ pointerEvents: 'none' }}>
           <animateMotion dur="2s" repeatCount="indefinite" path={d} />
         </circle>
       )}
+      {/* Pulsing endpoint for temp connections */}
       {isTemp && (
         <circle cx={x2} cy={y2} r="5" fill={lineColor} opacity="0.7" style={{ pointerEvents: 'none' }}>
           <animate attributeName="r" values="4;6;4" dur="1s" repeatCount="indefinite" />
@@ -113,21 +96,18 @@ function ColorPicker({ connectionId, currentColor, onChangeColor, onDelete, posi
       return p;
     };
 
-    let r: number;
-    let g: number;
-    let b: number;
-
+    let r: number, g: number, b: number;
     if (s === 0) {
       r = g = b = l;
     } else {
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-      r = hueToRgb(p, q, h + 1 / 3);
-      g = hueToRgb(p, q, h);
-      b = hueToRgb(p, q, h - 1 / 3);
+      const q2 = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p2 = 2 * l - q2;
+      r = hueToRgb(p2, q2, h + 1 / 3);
+      g = hueToRgb(p2, q2, h);
+      b = hueToRgb(p2, q2, h - 1 / 3);
     }
 
-    return `#${[r, g, b].map(channel => Math.round(channel * 255).toString(16).padStart(2, '0')).join('')}`;
+    return `#${[r, g, b].map(ch => Math.round(ch * 255).toString(16).padStart(2, '0')).join('')}`;
   }, [currentColor]);
 
   return (
@@ -163,49 +143,46 @@ function ColorPicker({ connectionId, currentColor, onChangeColor, onDelete, posi
 
 export function ConnectionLines({ connections, nodes, tempConnection, selectedConnectionId, onSelectConnection, onUpdateConnectionColor, onDeleteConnection }: ConnectionLinesProps) {
   return (
-    <svg className="absolute inset-0 w-full h-full" style={{ overflow: 'visible' }}>
-      {connections.map((conn) => {
-        const fromNode = nodes.find(n => n.id === conn.fromNodeId);
-        const toNode = nodes.find(n => n.id === conn.toNodeId);
-        if (!fromNode || !toNode) return null;
-        const from = getPortWorldPosition(fromNode, conn.fromPortId);
-        const to = getPortWorldPosition(toNode, conn.toPortId);
-        if (!from || !to) return null;
-        const isSelected = selectedConnectionId === conn.id;
+    <svg className="absolute inset-0 w-full h-full" style={{ overflow: 'visible', pointerEvents: 'none' }}>
+      <g style={{ pointerEvents: 'auto' }}>
+        {connections.map((conn) => {
+          const fromNode = nodes.find(n => n.id === conn.fromNodeId);
+          const toNode = nodes.find(n => n.id === conn.toNodeId);
+          if (!fromNode || !toNode) return null;
+          const from = getHandleWorldPosition(fromNode, conn.fromPortId);
+          const to = getHandleWorldPosition(toNode, conn.toPortId);
+          if (!from || !to) return null;
+          const isSelected = selectedConnectionId === conn.id;
+          const midpoint = getBezierMidpoint(from.x, from.y, to.x, to.y);
 
-        return (
-          <g key={conn.id}>
-            <CurvedPath
-              x1={from.x}
-              y1={from.y}
-              x2={to.x}
-              y2={to.y}
-              color={conn.color}
-              isSelected={isSelected}
-              onClick={() => onSelectConnection(isSelected ? null : conn.id)}
-            />
-            {isSelected && (
-              <ColorPicker
-                connectionId={conn.id}
-                currentColor={conn.color || 'hsl(270 60% 65%)'}
-                onChangeColor={onUpdateConnectionColor}
-                onDelete={onDeleteConnection}
-                position={{ x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 }}
+          return (
+            <g key={conn.id}>
+              <Edge
+                x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                color={conn.color}
+                isSelected={isSelected}
+                onClick={() => onSelectConnection(isSelected ? null : conn.id)}
               />
-            )}
-          </g>
-        );
-      })}
+              {isSelected && (
+                <ColorPicker
+                  connectionId={conn.id}
+                  currentColor={conn.color || DEFAULT_EDGE_COLOR}
+                  onChangeColor={onUpdateConnectionColor}
+                  onDelete={onDeleteConnection}
+                  position={midpoint}
+                />
+              )}
+            </g>
+          );
+        })}
+      </g>
       {tempConnection && (
-        <CurvedPath
-          x1={tempConnection.fromX}
-          y1={tempConnection.fromY}
-          x2={tempConnection.toX}
-          y2={tempConnection.toY}
+        <Edge
+          x1={tempConnection.fromX} y1={tempConnection.fromY}
+          x2={tempConnection.toX} y2={tempConnection.toY}
           isTemp
         />
       )}
     </svg>
   );
 }
-
