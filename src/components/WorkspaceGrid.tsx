@@ -209,7 +209,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
                           </div>
                         )}
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {item.type === 'canvas' ? timeAgo(item.updatedAt) : `${0} files`}
+                          {item.type === 'canvas' ? timeAgo(item.updatedAt) : `${getChildren(item.id).length} files`}
                         </p>
                       </div>
 
