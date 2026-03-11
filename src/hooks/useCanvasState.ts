@@ -82,18 +82,28 @@ export function useCanvasState() {
 
   const addConnection = useCallback((fromNodeId: string, fromPortId: string, toNodeId: string, toPortId: string) => {
     if (fromNodeId === toNodeId) return;
-    const exists = connections.some(c =>
-      c.fromNodeId === fromNodeId && c.fromPortId === fromPortId &&
-      c.toNodeId === toNodeId && c.toPortId === toPortId
-    );
-    if (exists) return;
-    const conn: Connection = { id: crypto.randomUUID(), fromNodeId, fromPortId, toNodeId, toPortId };
+
     setConnections(prev => {
+      const exists = prev.some(c =>
+        c.fromNodeId === fromNodeId && c.fromPortId === fromPortId &&
+        c.toNodeId === toNodeId && c.toPortId === toPortId
+      );
+
+      if (exists) return prev;
+
+      const conn: Connection = {
+        id: crypto.randomUUID(),
+        fromNodeId,
+        fromPortId,
+        toNodeId,
+        toPortId,
+        color: 'hsl(270 60% 65%)',
+      };
       const next = [...prev, conn];
       pushHistory(nodes, next);
       return next;
     });
-  }, [connections, nodes, pushHistory]);
+  }, [nodes, pushHistory]);
 
   const deleteConnection = useCallback((id: string) => {
     setConnections(prev => {

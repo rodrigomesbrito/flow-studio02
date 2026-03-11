@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
 import { MoreHorizontal, Copy, Trash2, GripVertical, Upload } from 'lucide-react';
-import { CanvasNode, Position } from '@/types/canvas';
+import { CanvasNode, Position, Port } from '@/types/canvas';
 
 interface NodeCardProps {
   node: CanvasNode;
@@ -11,12 +11,14 @@ interface NodeCardProps {
   onDelete: () => void;
   onDuplicate: () => void;
   onDragStart: (nodeId: string, startMouse: Position) => void;
-  onPortDragStart: (nodeId: string, portId: string) => void;
+  onPortDragStart: (nodeId: string, portId: string, portType: Port['type']) => void;
+  onPortHover: (nodeId: string, portId: string, portType: Port['type']) => void;
+  onPortHoverLeave: (nodeId: string, portId: string) => void;
 }
 
 export function NodeCard({
   node, zoom, isSelected, onSelect, onUpdate, onDelete, onDuplicate,
-  onDragStart, onPortDragStart,
+  onDragStart, onPortDragStart, onPortHover, onPortHoverLeave,
 }: NodeCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
@@ -55,11 +57,11 @@ export function NodeCard({
     window.addEventListener('mouseup', handleUp);
   }, [node.size, zoom, onUpdate]);
 
-  const handlePortMouseDown = useCallback((e: React.MouseEvent, portId: string) => {
+  const handlePortMouseDown = useCallback((e: React.MouseEvent, portId: string, portType: Port['type']) => {
     e.stopPropagation();
     e.preventDefault();
     onSelect();
-    onPortDragStart(node.id, portId);
+    onPortDragStart(node.id, portId, portType);
   }, [node.id, onPortDragStart, onSelect]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,7 +104,9 @@ export function NodeCard({
           data-port-type={port.type}
           className={`port absolute ${port.type === 'input' ? 'port-input' : 'port-output'}`}
           style={getPortPosition(port.side)}
-          onMouseDown={(e) => handlePortMouseDown(e, port.id)}
+          onMouseDown={(e) => handlePortMouseDown(e, port.id, port.type)}
+          onMouseEnter={() => onPortHover(node.id, port.id, port.type)}
+          onMouseLeave={() => onPortHoverLeave(node.id, port.id)}
         />
       ))}
 
@@ -171,4 +175,3 @@ export function NodeCard({
     </div>
   );
 }
-

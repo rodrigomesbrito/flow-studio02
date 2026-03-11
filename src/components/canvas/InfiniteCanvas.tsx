@@ -4,7 +4,7 @@ import { CanvasSidebar } from './CanvasSidebar';
 import { BottomToolbar } from './BottomToolbar';
 import { NodeCard } from './NodeCard';
 import { ConnectionLines } from './ConnectionLines';
-import { Position, CanvasTool } from '@/types/canvas';
+import { Position, CanvasTool, Port } from '@/types/canvas';
 
 export function InfiniteCanvas() {
   const {
@@ -27,6 +27,7 @@ export function InfiniteCanvas() {
 
   const [tempConnection, setTempConnection] = useState<{ fromX: number; fromY: number; toX: number; toY: number } | null>(null);
   const connectionDrag = useRef<{ nodeId: string; portId: string } | null>(null);
+  const hoveredInputPort = useRef<{ nodeId: string; portId: string } | null>(null);
 
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
 
@@ -116,19 +117,22 @@ export function InfiniteCanvas() {
   const finishConnectionDrag = useCallback((clientX: number, clientY: number) => {
     if (!connectionDrag.current) return;
 
-    const hoveredElement = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
-    const targetPort = hoveredElement?.closest('[data-port-id][data-node-id][data-port-type="input"]') as HTMLElement | null;
+    let targetNodeId = hoveredInputPort.current?.nodeId ?? null;
+    let targetPortId = hoveredInputPort.current?.portId ?? null;
 
-    if (targetPort) {
-      const targetNodeId = targetPort.dataset.nodeId;
-      const targetPortId = targetPort.dataset.portId;
+    if (!targetNodeId || !targetPortId) {
+      const hoveredElement = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+      const targetPort = hoveredElement?.closest('[data-port-id][data-node-id][data-port-type="input"]') as HTMLElement | null;
+      targetNodeId = targetPort?.dataset.nodeId ?? null;
+      targetPortId = targetPort?.dataset.portId ?? null;
+    }
 
-      if (targetNodeId && targetPortId && targetNodeId !== connectionDrag.current.nodeId) {
-        addConnection(connectionDrag.current.nodeId, connectionDrag.current.portId, targetNodeId, targetPortId);
-      }
+    if (targetNodeId && targetPortId && targetNodeId !== connectionDrag.current.nodeId) {
+      addConnection(connectionDrag.current.nodeId, connectionDrag.current.portId, targetNodeId, targetPortId);
     }
 
     connectionDrag.current = null;
+    hoveredInputPort.current = null;
     setTempConnection(null);
   }, [addConnection]);
 
@@ -159,7 +163,7 @@ export function InfiniteCanvas() {
       window.removeEventListener('mousemove', handleWindowMouseMove);
       window.removeEventListener('mouseup', handleWindowMouseUp);
     };
-  }, [draggingNodeId, finishConnectionDrag, handleMouseMove, isPanning]);
+  }, [draggingNodeId, finishConnectionDrag, handleMouseMove, isPanning, tempConnection]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
@@ -184,14 +188,30 @@ export function InfiniteCanvas() {
     nodeStartPos.current = { ...node.position };
   }, [nodes, activeTool]);
 
-  const handlePortDragStart = useCallback((nodeId: string, portId: string) => {
-    if (activeTool === 'hand') return;
+  const handlePortDragStart = useCallback((nodeId: string, portId: string, portType: Port['type']) => {
+    if (activeTool === 'hand' || portType !== 'output') return;
     connectionDrag.current = { nodeId, portId };
+    hoveredInputPort.current = null;
     const fromPos = getPortWorldPos(nodeId, portId);
     if (fromPos) {
       setTempConnection({ fromX: fromPos.x, fromY: fromPos.y, toX: fromPos.x, toY: fromPos.y });
     }
   }, [activeTool, getPortWorldPos]);
+
+  const handlePortHover = useCallback((nodeId: string, portId: string, portType: Port['type']) => {
+    if (!connectionDrag.current) return;
+    if (portType !== 'input' || nodeId === connectionDrag.current.nodeId) {
+      hoveredInputPort.current = null;
+      return;
+    }
+    hoveredInputPort.current = { nodeId, portId };
+  }, []);
+
+  const handlePortHoverLeave = useCallback((nodeId: string, portId: string) => {
+    if (hoveredInputPort.current?.nodeId === nodeId && hoveredInputPort.current?.portId === portId) {
+      hoveredInputPort.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -214,6 +234,7 @@ export function InfiniteCanvas() {
       if (e.key === 'c' && !e.metaKey && !e.ctrlKey) setActiveTool('connect');
       if (e.key === 'Escape') {
         connectionDrag.current = null;
+        hoveredInputPort.current = null;
         setTempConnection(null);
         setSelectedNodeId(null);
         setSelectedConnectionId(null);
@@ -270,6 +291,8 @@ export function InfiniteCanvas() {
               onDuplicate={() => duplicateNode(node.id)}
               onDragStart={handleNodeDragStart}
               onPortDragStart={handlePortDragStart}
+              onPortHover={handlePortHover}
+              onPortHoverLeave={handlePortHoverLeave}
             />
           ))}
         </div>
@@ -288,4 +311,3 @@ export function InfiniteCanvas() {
     </div>
   );
 }
-
