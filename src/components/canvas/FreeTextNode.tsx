@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { CanvasNode, Position, TextStyle } from '@/types/canvas';
 import { Trash2, Bold, Italic, CaseSensitive, Plus, Minus } from 'lucide-react';
 
