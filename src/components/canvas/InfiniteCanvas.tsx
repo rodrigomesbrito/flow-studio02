@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { useCanvasState } from '@/hooks/useCanvasState';
-import { CanvasSidebar } from './CanvasSidebar';
+import { useCanvasTools } from '@/contexts/CanvasToolsContext';
 import { BottomToolbar } from './BottomToolbar';
 import { NodeCard } from './NodeCard';
 import { ConnectionLines } from './ConnectionLines';
@@ -15,6 +15,14 @@ export function InfiniteCanvas() {
     addConnection, deleteConnection, updateConnectionColor,
     undo, redo, zoomIn, zoomOut, resetView,
   } = useCanvasState();
+
+  const { registerAddNode, unregisterAddNode } = useCanvasTools();
+
+  // Register addNode for the sidebar tools
+  useEffect(() => {
+    registerAddNode(addNode);
+    return () => unregisterAddNode();
+  }, [addNode, registerAddNode, unregisterAddNode]);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [activeTool, setActiveTool] = useState<CanvasTool>('cursor');
@@ -251,7 +259,6 @@ export function InfiniteCanvas() {
 
   return (
     <div className="w-screen h-screen overflow-hidden relative">
-      <CanvasSidebar onAddNode={addNode} />
 
       <div
         ref={canvasRef}
