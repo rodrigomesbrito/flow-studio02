@@ -173,7 +173,7 @@ export function InfiniteCanvas() {
   }, [finishConnectionDrag]);
 
   useEffect(() => {
-    const isActive = Boolean(draggingNodeId || connectionDragRef.current || isPanning);
+    const isActive = Boolean(draggingNodeId || isConnecting || isPanning);
     if (!isActive) return;
 
     const handleWindowMouseMove = (e: MouseEvent) => handleMouseMove(e.clientX, e.clientY);
