@@ -97,20 +97,28 @@
   border-radius: 50%;
   border: 2px solid hsl(var(--card));
   cursor: crosshair;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .port:hover {
-  transform: scale(1.4);
-  box-shadow: 0 0 8px hsl(var(--primary) / 0.5);
+  transform: scale(1.5);
+  border-color: transparent;
 }
 
 .port-input {
   background: hsl(var(--port-color));
 }
 
+.port-input:hover {
+  box-shadow: 0 0 12px hsl(var(--port-color) / 0.6), 0 0 4px hsl(var(--port-color) / 0.3);
+}
+
 .port-output {
   background: hsl(var(--port-output));
+}
+
+.port-output:hover {
+  box-shadow: 0 0 12px hsl(var(--port-output) / 0.6), 0 0 4px hsl(var(--port-output) / 0.3);
 }
 
 /* Scrollbar */

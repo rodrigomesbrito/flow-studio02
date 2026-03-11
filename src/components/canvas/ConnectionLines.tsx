@@ -23,28 +23,52 @@ function getPortWorldPosition(node: CanvasNode, portId: string): { x: number; y:
 }
 
 function CurvedPath({ x1, y1, x2, y2, isTemp = false }: { x1: number; y1: number; x2: number; y2: number; isTemp?: boolean }) {
-  const dx = Math.abs(x2 - x1) * 0.5;
-  const d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+  const dx = Math.abs(x2 - x1);
+  const cp = Math.max(dx * 0.5, 50);
+  const d = `M ${x1} ${y1} C ${x1 + cp} ${y1}, ${x2 - cp} ${y2}, ${x2} ${y2}`;
+
+  const gradientId = `grad-${Math.round(x1)}-${Math.round(y1)}-${Math.round(x2)}-${Math.round(y2)}`;
 
   return (
     <g>
+      <defs>
+        <linearGradient id={gradientId} x1={x1} y1={y1} x2={x2} y2={y2} gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="hsl(270, 60%, 65%)" />
+          <stop offset="100%" stopColor="hsl(160, 60%, 50%)" />
+        </linearGradient>
+      </defs>
+      {/* Glow layer */}
       <path
         d={d}
         fill="none"
-        stroke="hsl(270, 60%, 65%)"
-        strokeWidth={2}
-        strokeOpacity={isTemp ? 0.5 : 0.8}
-        strokeDasharray={isTemp ? "6 4" : "none"}
+        stroke={`url(#${gradientId})`}
+        strokeWidth={isTemp ? 8 : 10}
+        strokeOpacity={isTemp ? 0.08 : 0.12}
+        strokeLinecap="round"
+      />
+      {/* Main line */}
+      <path
+        d={d}
+        fill="none"
+        stroke={`url(#${gradientId})`}
+        strokeWidth={isTemp ? 2 : 2.5}
+        strokeOpacity={isTemp ? 0.6 : 0.9}
+        strokeLinecap="round"
+        strokeDasharray={isTemp ? "8 6" : "none"}
         className={isTemp ? "connection-line-animated" : ""}
       />
+      {/* Flow dots for established connections */}
       {!isTemp && (
-        <path
-          d={d}
-          fill="none"
-          stroke="hsl(270, 60%, 65%)"
-          strokeWidth={6}
-          strokeOpacity={0.1}
-        />
+        <circle r="3" fill="hsl(270, 60%, 75%)" opacity="0.8">
+          <animateMotion dur="2s" repeatCount="indefinite" path={d} />
+        </circle>
+      )}
+      {/* End dot for temp connections */}
+      {isTemp && (
+        <circle cx={x2} cy={y2} r="5" fill="hsl(160, 60%, 50%)" opacity="0.6">
+          <animate attributeName="r" values="4;6;4" dur="1s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.4;0.8;0.4" dur="1s" repeatCount="indefinite" />
+        </circle>
       )}
     </g>
   );

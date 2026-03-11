@@ -1,4 +1,4 @@
-import { Search, Clock, FolderOpen, FileEdit, Layers, GitBranch, Settings, HelpCircle, MessageCircle, Type, Image, AlignLeft } from 'lucide-react';
+import { Search, Clock, FolderOpen, FileEdit, Layers, GitBranch, Settings, HelpCircle, MessageCircle, Type, Image } from 'lucide-react';
 import { NodeType } from '@/types/canvas';
 
 interface CanvasSidebarProps {
@@ -18,7 +18,6 @@ const navIcons = [
 const nodeButtons: { icon: typeof Type; label: string; type: NodeType }[] = [
   { icon: Type, label: 'Texto', type: 'text' },
   { icon: Image, label: 'Imagem', type: 'image' },
-  { icon: AlignLeft, label: 'Prompt', type: 'prompt' },
 ];
 
 export function CanvasSidebar({ onAddNode }: CanvasSidebarProps) {

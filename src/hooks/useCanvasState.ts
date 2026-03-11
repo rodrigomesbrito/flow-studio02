@@ -10,8 +10,8 @@ const createNode = (type: NodeType, position: Position): CanvasNode => ({
   id: crypto.randomUUID(),
   type,
   position,
-  size: { width: type === 'image' ? 280 : 320, height: type === 'image' ? 300 : type === 'prompt' ? 280 : 180 },
-  title: type === 'text' ? 'Text' : type === 'image' ? 'Image' : 'Prompt',
+  size: { width: type === 'image' ? 280 : 320, height: type === 'image' ? 300 : 180 },
+  title: type === 'text' ? 'Text' : 'Image',
   content: '',
   ports: createDefaultPorts(),
 });
