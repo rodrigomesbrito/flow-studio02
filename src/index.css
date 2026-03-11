@@ -125,7 +125,7 @@
 }
 
 .port-handle:hover::after {
-  box-shadow: 0 0 8px hsl(var(--port-color) / 0.6);
+  box-shadow: 0 0 6px var(--port-dynamic-color, hsl(var(--port-color) / 0.6));
 }
 
 .port-input,
