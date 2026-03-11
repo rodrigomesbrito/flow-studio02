@@ -3,6 +3,7 @@ import { useCanvasState } from '@/hooks/useCanvasState';
 import { useCanvasTools } from '@/contexts/CanvasToolsContext';
 import { BottomToolbar } from './BottomToolbar';
 import { NodeCard } from './NodeCard';
+import { FreeTextNode } from './FreeTextNode';
 import { ConnectionLines } from './ConnectionLines';
 import { Position, CanvasTool } from '@/types/canvas';
 import { getHandleWorldPosition, findClosestCompatibleHandle, HANDLE_HIT_RADIUS } from './connection-utils';
@@ -18,7 +19,6 @@ export function InfiniteCanvas() {
 
   const { registerAddNode, unregisterAddNode } = useCanvasTools();
 
-  // Register addNode for the sidebar tools
   useEffect(() => {
     registerAddNode(addNode);
     return () => unregisterAddNode();
@@ -41,15 +41,21 @@ export function InfiniteCanvas() {
 
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
 
+  // Space key temporary pan
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const toolBeforeSpace = useRef<CanvasTool>('cursor');
+
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
 
   const activeSourceHandleId = connectionDragRef.current?.portId ?? null;
 
+  const effectiveTool = spaceHeld ? 'hand' : activeTool;
+
   const getCursorStyle = () => {
     if (isPanning) return 'grabbing';
-    if (activeTool === 'hand') return 'grab';
-    if (activeTool === 'connect') return 'crosshair';
+    if (effectiveTool === 'hand') return 'grab';
+    if (effectiveTool === 'connect') return 'crosshair';
     return 'default';
   };
 
@@ -84,10 +90,10 @@ export function InfiniteCanvas() {
       setSelectedConnectionId(null);
     }
 
-    if (activeTool === 'hand' && isBackground) {
+    if ((effectiveTool === 'hand') && isBackground) {
       beginPan(e.clientX, e.clientY);
     }
-  }, [activeTool, beginPan, setSelectedNodeId]);
+  }, [effectiveTool, beginPan, setSelectedNodeId]);
 
   const handleMouseMove = useCallback((clientX: number, clientY: number) => {
     if (isPanning) {
@@ -207,16 +213,16 @@ export function InfiniteCanvas() {
   }, [zoom, offset, setOffset, setZoom]);
 
   const handleNodeDragStart = useCallback((nodeId: string, startMouse: Position) => {
-    if (activeTool === 'hand') return;
+    if (effectiveTool === 'hand') return;
     const node = nodes.find((item) => item.id === nodeId);
     if (!node) return;
     setDraggingNodeId(nodeId);
     dragStart.current = startMouse;
     nodeStartPos.current = { ...node.position };
-  }, [activeTool, nodes]);
+  }, [effectiveTool, nodes]);
 
   const handlePortDragStart = useCallback((nodeId: string, portId: string) => {
-    if (activeTool === 'hand') return;
+    if (effectiveTool === 'hand') return;
     connectionDragRef.current = { nodeId, portId };
     setIsConnecting(true);
     const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
@@ -229,11 +235,23 @@ export function InfiniteCanvas() {
     setSelectedConnectionId(null);
     setHighlightedTargetHandleId(null);
     setTempConnection({ fromX: fromPos.x, fromY: fromPos.y, toX: fromPos.x, toY: fromPos.y });
-  }, [activeTool, setSelectedNodeId]);
+  }, [effectiveTool, setSelectedNodeId]);
 
+  // Keyboard shortcuts including space-key panning
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+      const tag = (e.target as HTMLElement).tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA';
+
+      // Space key for temporary panning (don't intercept when typing)
+      if (e.code === 'Space' && !isInput && !e.repeat) {
+        e.preventDefault();
+        setSpaceHeld(true);
+        toolBeforeSpace.current = activeTool;
+        return;
+      }
+
+      if (isInput) return;
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedConnectionId) {
@@ -256,13 +274,23 @@ export function InfiniteCanvas() {
         setSelectedConnectionId(null);
       }
     };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setSpaceHeld(false);
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNodeId, selectedConnectionId, deleteNode, deleteConnection, undo, redo, setSelectedNodeId, resetConnectionDrag]);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [selectedNodeId, selectedConnectionId, deleteNode, deleteConnection, undo, redo, setSelectedNodeId, resetConnectionDrag, activeTool]);
 
   return (
     <div className="w-full h-screen overflow-hidden relative">
-
       <div
         ref={canvasRef}
         className="absolute inset-0 canvas-grid overflow-hidden"
@@ -291,25 +319,41 @@ export function InfiniteCanvas() {
             }}
           />
 
-          {nodes.map((node) => (
-            <NodeCard
-              key={node.id}
-              node={node}
-              zoom={zoom}
-              isSelected={selectedNodeId === node.id}
-              activeSourceHandleId={activeSourceHandleId}
-              highlightedTargetHandleId={highlightedTargetHandleId}
-              onSelect={() => {
-                setSelectedNodeId(node.id);
-                setSelectedConnectionId(null);
-              }}
-              onUpdate={(updates) => updateNode(node.id, updates)}
-              onDelete={() => deleteNode(node.id)}
-              onDuplicate={() => duplicateNode(node.id)}
-              onDragStart={handleNodeDragStart}
-              onPortDragStart={handlePortDragStart}
-            />
-          ))}
+          {nodes.map((node) =>
+            node.type === 'freetext' ? (
+              <FreeTextNode
+                key={node.id}
+                node={node}
+                zoom={zoom}
+                isSelected={selectedNodeId === node.id}
+                onSelect={() => {
+                  setSelectedNodeId(node.id);
+                  setSelectedConnectionId(null);
+                }}
+                onUpdate={(updates) => updateNode(node.id, updates)}
+                onDelete={() => deleteNode(node.id)}
+                onDragStart={handleNodeDragStart}
+              />
+            ) : (
+              <NodeCard
+                key={node.id}
+                node={node}
+                zoom={zoom}
+                isSelected={selectedNodeId === node.id}
+                activeSourceHandleId={activeSourceHandleId}
+                highlightedTargetHandleId={highlightedTargetHandleId}
+                onSelect={() => {
+                  setSelectedNodeId(node.id);
+                  setSelectedConnectionId(null);
+                }}
+                onUpdate={(updates) => updateNode(node.id, updates)}
+                onDelete={() => deleteNode(node.id)}
+                onDuplicate={() => duplicateNode(node.id)}
+                onDragStart={handleNodeDragStart}
+                onPortDragStart={handlePortDragStart}
+              />
+            )
+          )}
         </div>
       </div>
 
