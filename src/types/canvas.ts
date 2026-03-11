@@ -1,4 +1,4 @@
-export type NodeType = 'text' | 'image';
+export type NodeType = 'text' | 'image' | 'freetext';
 
 export type CanvasTool = 'cursor' | 'hand' | 'connect';
 

@@ -1,4 +1,4 @@
-import { Home, Type, Image, ArrowLeft } from 'lucide-react';
+import { Home, Type, Image, ArrowLeft, TextCursorInput } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useCanvasTools } from '@/contexts/CanvasToolsContext';
@@ -7,6 +7,7 @@ import { NodeType } from '@/types/canvas';
 const canvasTools: { icon: typeof Type; label: string; type: NodeType }[] = [
   { icon: Type, label: 'Add Text', type: 'text' },
   { icon: Image, label: 'Add Image', type: 'image' },
+  { icon: TextCursorInput, label: 'Texto livre', type: 'freetext' },
 ];
 
 export function AppSidebar() {
