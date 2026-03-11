@@ -37,7 +37,7 @@ export function SaveIndicator({ watchValue }: SaveIndicatorProps) {
         </>
       ) : (
         <>
-          <Check size={12} className="text-green-500" />
+          <Check size={12} className="text-primary" />
           <span>Salvo</span>
         </>
       )}

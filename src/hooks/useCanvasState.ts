@@ -213,23 +213,23 @@ export function useCanvasState() {
       };
     });
 
-    const newConnections: Connection[] = clipConns
-      .map((conn) => {
-        const newFromId = idMap.get(conn.fromNodeId);
-        const newToId = idMap.get(conn.toNodeId);
-        const newFromPort = portMap.get(conn.fromPortId);
-        const newToPort = portMap.get(conn.toPortId);
-        if (!newFromId || !newToId || !newFromPort || !newToPort) return null;
-        return {
+    const newConnections: Connection[] = [];
+    clipConns.forEach((conn) => {
+      const newFromId = idMap.get(conn.fromNodeId);
+      const newToId = idMap.get(conn.toNodeId);
+      const newFromPort = portMap.get(conn.fromPortId);
+      const newToPort = portMap.get(conn.toPortId);
+      if (newFromId && newToId && newFromPort && newToPort) {
+        newConnections.push({
           ...conn,
           id: crypto.randomUUID(),
           fromNodeId: newFromId,
           fromPortId: newFromPort,
           toNodeId: newToId,
           toPortId: newToPort,
-        };
-      })
-      .filter((c): c is Connection => c !== null);
+        });
+      }
+    });
 
     setNodes((prevNodes) => {
       const nextNodes = [...prevNodes, ...newNodes];
