@@ -11,7 +11,7 @@ interface NodeCardProps {
   onDelete: () => void;
   onDuplicate: () => void;
   onDragStart: (nodeId: string, startMouse: Position) => void;
-  onPortDragStart: (nodeId: string, portId: string, pos: Position) => void;
+  onPortDragStart: (nodeId: string, portId: string) => void;
   onPortDragEnd: (nodeId: string, portId: string) => void;
 }
 
@@ -57,14 +57,10 @@ export function NodeCard({
     window.addEventListener('mouseup', handleUp);
   }, [node.size, zoom, onUpdate]);
 
-  const handlePortMouseDown = useCallback((e: React.MouseEvent, portId: string, portType: string) => {
+  const handlePortMouseDown = useCallback((e: React.MouseEvent, portId: string) => {
     e.stopPropagation();
     e.preventDefault();
-    const rect = (e.target as HTMLElement).getBoundingClientRect();
-    const pos = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-    if (portType === 'output') {
-      onPortDragStart(node.id, portId, pos);
-    }
+    onPortDragStart(node.id, portId);
   }, [node.id, onPortDragStart]);
 
   const handlePortMouseUp = useCallback((e: React.MouseEvent, portId: string) => {
@@ -110,7 +106,7 @@ export function NodeCard({
           key={port.id}
           className={`port absolute ${port.type === 'input' ? 'port-input' : 'port-output'}`}
           style={getPortPosition(port.side)}
-          onMouseDown={(e) => handlePortMouseDown(e, port.id, port.type)}
+          onMouseDown={(e) => handlePortMouseDown(e, port.id)}
           onMouseUp={(e) => handlePortMouseUp(e, port.id)}
         />
       ))}
