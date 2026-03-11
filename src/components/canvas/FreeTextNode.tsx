@@ -6,7 +6,7 @@ interface FreeTextNodeProps {
   node: CanvasNode;
   zoom: number;
   isSelected: boolean;
-  onSelect: () => void;
+  onSelect: (e?: React.MouseEvent) => void;
   onUpdate: (updates: Partial<CanvasNode>) => void;
   onDelete: () => void;
   onDragStart: (nodeId: string, startMouse: Position) => void;
