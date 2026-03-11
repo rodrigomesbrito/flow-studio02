@@ -148,7 +148,6 @@
   background: hsl(var(--port-highlight));
   box-shadow: 0 0 10px hsl(var(--port-highlight) / 0.6);
 }
-}
 
 ::-webkit-scrollbar {
   width: 6px;
