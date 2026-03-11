@@ -174,6 +174,7 @@ export function ConnectionLines({ connections, nodes, tempConnection, selectedCo
         <Edge
           x1={tempConnection.fromX} y1={tempConnection.fromY}
           x2={tempConnection.toX} y2={tempConnection.toY}
+          color="#a855f7"
           isTemp
         />
       )}

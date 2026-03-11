@@ -108,7 +108,7 @@
 .port-handle:hover,
 .port-handle.is-source,
 .port-handle.is-highlighted {
-  transform: scale(1.18);
+  transform: var(--port-hover-transform, scale(1.18));
 }
 
 .port-input {
