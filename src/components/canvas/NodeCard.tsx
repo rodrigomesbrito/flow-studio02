@@ -13,7 +13,7 @@ interface NodeCardProps {
   onUpdate: (updates: Partial<CanvasNode>) => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  onDragStart: (nodeId: string, startMouse: Position) => void;
+  onDragStart: (nodeId: string, startMouse: Position, altKey?: boolean) => void;
   onPortDragStart: (nodeId: string, portId: string) => void;
 }
 
