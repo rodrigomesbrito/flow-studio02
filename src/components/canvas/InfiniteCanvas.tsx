@@ -261,11 +261,11 @@ export function InfiniteCanvas() {
   }, [selectedNodeId, selectedConnectionId, deleteNode, deleteConnection, undo, redo, setSelectedNodeId, resetConnectionDrag]);
 
   return (
-    <div className="w-screen h-screen overflow-hidden relative">
+    <div className="w-full h-screen overflow-hidden relative">
 
       <div
         ref={canvasRef}
-        className="absolute inset-0 ml-14 canvas-grid overflow-hidden"
+        className="absolute inset-0 canvas-grid overflow-hidden"
         style={{ cursor: getCursorStyle() }}
         onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleCanvasMouseMove}

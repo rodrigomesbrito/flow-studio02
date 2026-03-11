@@ -41,7 +41,7 @@ function AppLayout() {
     return (
       <CanvasToolsProvider>
         <AppSidebar />
-        <div className="ml-14 overflow-hidden">
+        <div className="pl-14 h-screen w-screen overflow-hidden">
           <Routes>
             <Route path="/canvas/:canvasId" element={<CanvasPage />} />
           </Routes>
