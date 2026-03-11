@@ -259,7 +259,6 @@ export function InfiniteCanvas() {
 
   return (
     <div className="w-screen h-screen overflow-hidden relative">
-      <CanvasSidebar onAddNode={addNode} />
 
       <div
         ref={canvasRef}
