@@ -21,51 +21,40 @@ function Edge({ x1, y1, x2, y2, color, isTemp = false, isSelected = false, onCli
 
   return (
     <g>
-      {/* Invisible wide hit area for clicking */}
+      {/* Invisible wide hit area */}
       {!isTemp && (
         <path
           d={d}
           fill="none"
           stroke="transparent"
-          strokeWidth={24}
+          strokeWidth={20}
           style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
           onClick={(e) => { e.stopPropagation(); onClick?.(); }}
         />
       )}
-      {/* Glow / shadow layer */}
+      {/* Main bezier line */}
       <path
         d={d}
         fill="none"
         stroke={lineColor}
-        strokeWidth={isTemp ? 8 : isSelected ? 14 : 10}
-        strokeOpacity={isSelected ? 0.22 : isTemp ? 0.1 : 0.14}
+        strokeWidth={isSelected ? 2.5 : isTemp ? 1.5 : 2}
+        strokeOpacity={isTemp ? 0.6 : 1}
         strokeLinecap="round"
-        style={{ pointerEvents: 'none' }}
-      />
-      {/* Main visible line */}
-      <path
-        d={d}
-        fill="none"
-        stroke={lineColor}
-        strokeWidth={isSelected ? 3 : isTemp ? 2 : 2.5}
-        strokeOpacity={isTemp ? 0.7 : 0.95}
-        strokeLinecap="round"
-        strokeDasharray={isTemp ? '8 6' : undefined}
+        strokeDasharray={isTemp ? '6 4' : undefined}
         className={isTemp ? 'connection-line-animated' : ''}
         style={{ pointerEvents: 'none' }}
       />
-      {/* Animated dot flowing along edge */}
-      {!isTemp && (
-        <circle r="3" fill={lineColor} opacity="0.85" style={{ pointerEvents: 'none' }}>
-          <animateMotion dur="2s" repeatCount="indefinite" path={d} />
-        </circle>
-      )}
-      {/* Pulsing endpoint for temp connections */}
-      {isTemp && (
-        <circle cx={x2} cy={y2} r="5" fill={lineColor} opacity="0.7" style={{ pointerEvents: 'none' }}>
-          <animate attributeName="r" values="4;6;4" dur="1s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.4;0.9;0.4" dur="1s" repeatCount="indefinite" />
-        </circle>
+      {/* Selection glow */}
+      {isSelected && (
+        <path
+          d={d}
+          fill="none"
+          stroke={lineColor}
+          strokeWidth={8}
+          strokeOpacity={0.15}
+          strokeLinecap="round"
+          style={{ pointerEvents: 'none' }}
+        />
       )}
     </g>
   );
@@ -80,12 +69,11 @@ function ColorPicker({ connectionId, currentColor, onChangeColor, onDelete, posi
 }) {
   const inputColor = useMemo(() => {
     const match = currentColor.match(/hsl\((\d+)\s+(\d+)%\s+(\d+)%\)/);
-    if (!match) return '#a78bfa';
+    if (!match) return '#10b981';
     const [, hRaw, sRaw, lRaw] = match;
     const h = Number(hRaw) / 360;
     const s = Number(sRaw) / 100;
     const l = Number(lRaw) / 100;
-
     const hueToRgb = (p: number, q: number, t: number) => {
       let temp = t;
       if (temp < 0) temp += 1;
@@ -95,18 +83,14 @@ function ColorPicker({ connectionId, currentColor, onChangeColor, onDelete, posi
       if (temp < 2 / 3) return p + (q - p) * (2 / 3 - temp) * 6;
       return p;
     };
-
     let r: number, g: number, b: number;
-    if (s === 0) {
-      r = g = b = l;
-    } else {
+    if (s === 0) { r = g = b = l; } else {
       const q2 = l < 0.5 ? l * (1 + s) : l + s - l * s;
       const p2 = 2 * l - q2;
       r = hueToRgb(p2, q2, h + 1 / 3);
       g = hueToRgb(p2, q2, h);
       b = hueToRgb(p2, q2, h - 1 / 3);
     }
-
     return `#${[r, g, b].map(ch => Math.round(ch * 255).toString(16).padStart(2, '0')).join('')}`;
   }, [currentColor]);
 
@@ -127,12 +111,12 @@ function ColorPicker({ connectionId, currentColor, onChangeColor, onDelete, posi
           value={inputColor}
           onChange={(e) => onChangeColor(connectionId, hexToHsl(e.target.value))}
           className="w-6 h-6 rounded cursor-pointer border-0 p-0 bg-transparent flex-shrink-0"
-          title="Cor personalizada"
+          title="Custom color"
         />
         <button
           onClick={() => onDelete(connectionId)}
           className="ml-1 text-destructive hover:text-destructive/80 text-xs font-medium flex-shrink-0"
-          title="Deletar"
+          title="Delete"
         >
           ✕
         </button>
@@ -143,7 +127,17 @@ function ColorPicker({ connectionId, currentColor, onChangeColor, onDelete, posi
 
 export function ConnectionLines({ connections, nodes, tempConnection, selectedConnectionId, onSelectConnection, onUpdateConnectionColor, onDeleteConnection }: ConnectionLinesProps) {
   return (
-    <svg className="absolute inset-0 w-full h-full" style={{ overflow: 'visible', pointerEvents: 'none' }}>
+    <svg
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        overflow: 'visible',
+      }}
+    >
       <g style={{ pointerEvents: 'auto' }}>
         {connections.map((conn) => {
           const fromNode = nodes.find(n => n.id === conn.fromNodeId);

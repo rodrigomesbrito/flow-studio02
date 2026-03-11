@@ -1,6 +1,6 @@
 import { CanvasNode, Port, Position } from '@/types/canvas';
 
-export const DEFAULT_EDGE_COLOR = 'hsl(270 60% 65%)';
+export const DEFAULT_EDGE_COLOR = 'hsl(160 84% 39%)'; // #10b981 equivalent
 export const HANDLE_HIT_RADIUS = 18;
 
 export interface HandlePosition {
@@ -35,12 +35,7 @@ export function getNodeHandlePositions(node: CanvasNode): HandlePosition[] {
     .map((handle) => {
       const position = getHandleWorldPosition(node, handle.id);
       if (!position) return null;
-
-      return {
-        nodeId: node.id,
-        handle,
-        position,
-      };
+      return { nodeId: node.id, handle, position };
     })
     .filter((value): value is HandlePosition => value !== null);
 }
@@ -50,11 +45,7 @@ export function isValidHandleConnection(sourceNodeId: string, sourceHandle: Port
 }
 
 export function findClosestCompatibleHandle({
-  nodes,
-  sourceNodeId,
-  sourceHandleId,
-  point,
-  maxDistance = HANDLE_HIT_RADIUS,
+  nodes, sourceNodeId, sourceHandleId, point, maxDistance = HANDLE_HIT_RADIUS,
 }: {
   nodes: CanvasNode[];
   sourceNodeId: string;
@@ -65,19 +56,14 @@ export function findClosestCompatibleHandle({
   const sourceNode = nodes.find((node) => node.id === sourceNodeId);
   const sourceHandle = sourceNode?.ports.find((port) => port.id === sourceHandleId);
 
-  if (!sourceNode || !sourceHandle || sourceHandle.type !== 'output') {
-    return null;
-  }
+  if (!sourceNode || !sourceHandle || sourceHandle.type !== 'output') return null;
 
   let closest: HandlePosition | null = null;
   let closestDistance = maxDistance;
 
   for (const node of nodes) {
     for (const candidate of getNodeHandlePositions(node)) {
-      if (!isValidHandleConnection(sourceNodeId, sourceHandle, candidate.nodeId, candidate.handle)) {
-        continue;
-      }
-
+      if (!isValidHandleConnection(sourceNodeId, sourceHandle, candidate.nodeId, candidate.handle)) continue;
       const distance = Math.hypot(candidate.position.x - point.x, candidate.position.y - point.y);
       if (distance <= closestDistance) {
         closest = candidate;
@@ -89,26 +75,19 @@ export function findClosestCompatibleHandle({
   return closest;
 }
 
-export function getBezierPath(x1: number, y1: number, x2: number, y2: number) {
-  const dx = Math.abs(x2 - x1);
-  const dy = Math.abs(y2 - y1);
-  const control = Math.max(dx * 0.45, dy * 0.2, 56);
-
-  return `M ${x1} ${y1} C ${x1 + control} ${y1}, ${x2 - control} ${y2}, ${x2} ${y2}`;
+export function getBezierPath(startX: number, startY: number, endX: number, endY: number) {
+  const offsetX = Math.abs(endX - startX) * 0.5;
+  return `M ${startX} ${startY} C ${startX + offsetX} ${startY}, ${endX - offsetX} ${endY}, ${endX} ${endY}`;
 }
 
 export function getBezierMidpoint(x1: number, y1: number, x2: number, y2: number) {
-  const dx = Math.abs(x2 - x1);
-  const dy = Math.abs(y2 - y1);
-  const control = Math.max(dx * 0.45, dy * 0.2, 56);
-
+  const offsetX = Math.abs(x2 - x1) * 0.5;
   const p0 = { x: x1, y: y1 };
-  const p1 = { x: x1 + control, y: y1 };
-  const p2 = { x: x2 - control, y: y2 };
+  const p1 = { x: x1 + offsetX, y: y1 };
+  const p2 = { x: x2 - offsetX, y: y2 };
   const p3 = { x: x2, y: y2 };
   const t = 0.5;
   const mt = 1 - t;
-
   return {
     x: mt ** 3 * p0.x + 3 * mt ** 2 * t * p1.x + 3 * mt * t ** 2 * p2.x + t ** 3 * p3.x,
     y: mt ** 3 * p0.y + 3 * mt ** 2 * t * p1.y + 3 * mt * t ** 2 * p2.y + t ** 3 * p3.y,
