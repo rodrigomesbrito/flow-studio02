@@ -40,9 +40,8 @@
     --canvas-dot: 240 5% 18%;
     --node-border: 240 4% 28%;
     --connection-line: 270 60% 65%;
-    --port-color: 160 60% 50%;
-    --port-output: 270 60% 65%;
-    --port-highlight: 48 96% 62%;
+    --port-color: 270 60% 65%;
+    --port-highlight: 270 80% 75%;
 
     --sidebar-background: 240 6% 7%;
     --sidebar-foreground: 240 5% 55%;
