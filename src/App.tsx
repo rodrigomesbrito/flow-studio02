@@ -40,11 +40,13 @@ function AppLayout() {
   if (isCanvasRoute) {
     return (
       <CanvasToolsProvider>
-        <AppSidebar />
-        <div className="ml-14 overflow-hidden">
-          <Routes>
-            <Route path="/canvas/:canvasId" element={<CanvasPage />} />
-          </Routes>
+        <div className="flex h-screen w-screen overflow-hidden">
+          <AppSidebar />
+          <div className="flex-1 overflow-hidden">
+            <Routes>
+              <Route path="/canvas/:canvasId" element={<CanvasPage />} />
+            </Routes>
+          </div>
         </div>
       </CanvasToolsProvider>
     );
