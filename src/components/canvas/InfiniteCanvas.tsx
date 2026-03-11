@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { useCanvasState } from '@/hooks/useCanvasState';
 import { useCanvasTools } from '@/contexts/CanvasToolsContext';
 import { BottomToolbar } from './BottomToolbar';
@@ -6,6 +6,7 @@ import { NodeCard } from './NodeCard';
 import { FreeTextNode } from './FreeTextNode';
 import { ConnectionLines } from './ConnectionLines';
 import { Position, CanvasTool } from '@/types/canvas';
+import { DEFAULT_EDGE_COLOR } from './connection-utils';
 import { getHandleWorldPosition, findClosestCompatibleHandle, HANDLE_HIT_RADIUS } from './connection-utils';
 
 interface SelectionBox {
