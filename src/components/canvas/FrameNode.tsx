@@ -1,6 +1,13 @@
 import { useRef, useState, useCallback } from 'react';
 import { CanvasNode, Position } from '@/types/canvas';
-import { Trash2, GripVertical } from 'lucide-react';
+import { GripVertical, Lock } from 'lucide-react';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 
 interface FrameNodeProps {
   node: CanvasNode;
@@ -23,22 +30,25 @@ export function FrameNode({
 }: FrameNodeProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
+  const isLocked = node.locked ?? false;
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest('.resize-handle') || target.closest('input') || target.closest('button')) return;
 
-    // Only drag from the header area (first 40px)
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const relativeY = (e.clientY - rect.top) / zoom;
-    if (relativeY > 40) return; // Click inside the frame content area — don't drag
+    if (relativeY > 40) return;
 
     e.stopPropagation();
     onSelect(e);
-    onDragStart(node.id, { x: e.clientX, y: e.clientY }, e.altKey);
-  }, [node.id, onSelect, onDragStart, zoom]);
+    if (!isLocked) {
+      onDragStart(node.id, { x: e.clientX, y: e.clientY }, e.altKey);
+    }
+  }, [node.id, onSelect, onDragStart, zoom, isLocked]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    if (isLocked) return;
     e.stopPropagation();
     e.preventDefault();
     resizeRef.current = { startX: e.clientX, startY: e.clientY, startW: node.size.width, startH: node.size.height };
@@ -63,80 +73,97 @@ export function FrameNode({
 
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
-  }, [node.size, onUpdate, zoom]);
+  }, [node.size, onUpdate, zoom, isLocked]);
 
   return (
-    <div
-      className={`absolute select-none frame-node ${isSelected ? 'frame-selected' : ''}`}
-      style={{
-        left: node.position.x,
-        top: node.position.y,
-        width: node.size.width,
-        height: node.size.height,
-        zIndex: isSelected ? 5 : 1,
-      }}
-      onMouseDown={handleMouseDown}
-    >
-      {/* Frame background */}
-      <div className="absolute inset-0 rounded-xl bg-[hsl(var(--canvas-bg))] border border-border/40 pointer-events-none" 
-        style={{ background: 'hsl(240 6% 11% / 0.6)' }}
-      />
-
-      {/* Header */}
-      <div className="relative flex items-center gap-2 px-3 py-2 cursor-grab">
-        <GripVertical size={14} className="text-muted-foreground/50 shrink-0" />
-        {editingTitle ? (
-          <input
-            autoFocus
-            value={node.title}
-            onChange={(e) => onUpdate({ title: e.target.value })}
-            onBlur={() => setEditingTitle(false)}
-            onKeyDown={(e) => e.key === 'Enter' && setEditingTitle(false)}
-            className="bg-transparent text-sm font-semibold text-muted-foreground outline-none flex-1"
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          className={`absolute select-none frame-node ${isSelected ? 'frame-selected' : ''}`}
+          style={{
+            left: node.position.x,
+            top: node.position.y,
+            width: node.size.width,
+            height: node.size.height,
+            zIndex: isSelected ? 5 : 1,
+          }}
+          onMouseDown={handleMouseDown}
+        >
+          {/* Frame background */}
+          <div className={`absolute inset-0 rounded-xl border pointer-events-none ${isLocked ? 'border-border/40 border-dashed' : 'border-border/40'}`}
+            style={{ background: 'hsl(240 6% 11% / 0.6)' }}
           />
-        ) : (
-          <span
-            className="text-sm font-semibold text-muted-foreground/70 cursor-text truncate"
-            onDoubleClick={() => setEditingTitle(true)}
-          >
-            {node.title || 'Frame'}
-          </span>
-        )}
 
-        {isSelected && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors ml-auto"
-          >
-            <Trash2 size={12} />
-          </button>
-        )}
-      </div>
+          {/* Lock indicator */}
+          {isLocked && (
+            <div className="absolute top-2 right-2 z-10">
+              <Lock size={12} className="text-muted-foreground/60" />
+            </div>
+          )}
 
-      {/* Dashed separator */}
-      <div className="relative mx-3">
-        <div className="border-t border-dashed border-border/30" />
-      </div>
+          {/* Header */}
+          <div className={`relative flex items-center gap-2 px-3 py-2 ${isLocked ? 'cursor-not-allowed' : 'cursor-grab'}`}>
+            <GripVertical size={14} className="text-muted-foreground/50 shrink-0" />
+            {editingTitle && !isLocked ? (
+              <input
+                autoFocus
+                value={node.title}
+                onChange={(e) => onUpdate({ title: e.target.value })}
+                onBlur={() => setEditingTitle(false)}
+                onKeyDown={(e) => e.key === 'Enter' && setEditingTitle(false)}
+                className="bg-transparent text-sm font-semibold text-muted-foreground outline-none flex-1"
+              />
+            ) : (
+              <span
+                className="text-sm font-semibold text-muted-foreground/70 cursor-text truncate"
+                onDoubleClick={() => !isLocked && setEditingTitle(true)}
+              >
+                {node.title || 'Frame'}
+              </span>
+            )}
+          </div>
 
-      {/* Resize handle */}
-      <div
-        className="resize-handle absolute bottom-0 right-0 w-5 h-5 cursor-se-resize z-10"
-        onMouseDown={handleResizeStart}
-      >
-        <svg viewBox="0 0 16 16" className="w-full h-full text-muted-foreground/20">
-          <path d="M14 14L8 14L14 8Z" fill="currentColor" />
-        </svg>
-      </div>
+          {/* Dashed separator */}
+          <div className="relative mx-3">
+            <div className="border-t border-dashed border-border/30" />
+          </div>
 
-      {/* Corner resize indicators when selected */}
-      {isSelected && (
-        <>
-          <div className="absolute top-0 left-0 w-2 h-2 rounded-full bg-primary/40 -translate-x-1 -translate-y-1 pointer-events-none" />
-          <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-primary/40 translate-x-1 -translate-y-1 pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-2 h-2 rounded-full bg-primary/40 -translate-x-1 translate-y-1 pointer-events-none" />
-          <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-primary/40 translate-x-1 translate-y-1 pointer-events-none" />
-        </>
-      )}
-    </div>
+          {/* Resize handle */}
+          {!isLocked && (
+            <div
+              className="resize-handle absolute bottom-0 right-0 w-5 h-5 cursor-se-resize z-10"
+              onMouseDown={handleResizeStart}
+            >
+              <svg viewBox="0 0 16 16" className="w-full h-full text-muted-foreground/20">
+                <path d="M14 14L8 14L14 8Z" fill="currentColor" />
+              </svg>
+            </div>
+          )}
+
+          {/* Corner resize indicators when selected */}
+          {isSelected && (
+            <>
+              <div className="absolute top-0 left-0 w-2 h-2 rounded-full bg-primary/40 -translate-x-1 -translate-y-1 pointer-events-none" />
+              <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-primary/40 translate-x-1 -translate-y-1 pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-2 h-2 rounded-full bg-primary/40 -translate-x-1 translate-y-1 pointer-events-none" />
+              <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-primary/40 translate-x-1 translate-y-1 pointer-events-none" />
+            </>
+          )}
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-40 bg-card/95 backdrop-blur-xl border-border">
+        <ContextMenuItem
+          onClick={() => onUpdate({ locked: !isLocked })}
+          className="gap-2 text-foreground"
+        >
+          <Lock size={14} className="text-muted-foreground" />
+          {isLocked ? 'Desbloquear' : 'Bloquear'}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={onDelete} className="gap-2 text-destructive">
+          Apagar
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
