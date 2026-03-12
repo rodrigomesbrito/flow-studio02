@@ -79,6 +79,7 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
     if (newHistory.length > 50) newHistory.shift();
     historyRef.current = newHistory;
     historyIndexRef.current = newHistory.length - 1;
+    onDataChangeRef.current?.(nextNodes, nextConnections);
   }, []);
 
   const addNode = useCallback((type: NodeType) => {
