@@ -206,7 +206,7 @@ export function useCanvasState() {
     const newNodes: CanvasNode[] = clipNodes.map((node) => {
       const newId = crypto.randomUUID();
       idMap.set(node.id, newId);
-      const newPorts = (node.type === 'freetext' || node.type === 'checklist') ? [] : createDefaultPorts();
+      const newPorts = NO_PORTS_TYPES.includes(node.type) ? [] : createDefaultPorts();
       // Map old port ids to new ones
       node.ports.forEach((oldPort, i) => {
         if (newPorts[i]) portMap.set(oldPort.id, newPorts[i].id);
