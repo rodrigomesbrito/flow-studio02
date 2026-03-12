@@ -14,6 +14,8 @@ const getNodeDefaults = (type: NodeType) => {
       return { width: 240, height: 60, title: 'Texto livre' };
     case 'image':
       return { width: 280, height: 300, title: 'Image' };
+    case 'checklist':
+      return { width: 280, height: 220, title: 'Checklist' };
     default:
       return { width: 320, height: 180, title: 'Text' };
   }
@@ -28,7 +30,7 @@ const createNode = (type: NodeType, position: Position): CanvasNode => {
     size: { width: defaults.width, height: defaults.height },
     title: defaults.title,
     content: '',
-    ports: type === 'freetext' ? [] : createDefaultPorts(),
+    ports: (type === 'freetext' || type === 'checklist') ? [] : createDefaultPorts(),
   };
 };
 
@@ -118,7 +120,7 @@ export function useCanvasState() {
       ...cloneState(node),
       id: crypto.randomUUID(),
       position: { x: node.position.x + 40, y: node.position.y + 40 },
-      ports: node.type === 'freetext' ? [] : createDefaultPorts(),
+      ports: (node.type === 'freetext' || node.type === 'checklist') ? [] : createDefaultPorts(),
     };
 
     setNodes((prevNodes) => {
@@ -143,7 +145,7 @@ export function useCanvasState() {
         ...cloneState(node),
         id: newId,
         position: { x: node.position.x + offsetDelta.x, y: node.position.y + offsetDelta.y },
-        ports: node.type === 'freetext' ? [] : createDefaultPorts(),
+        ports: (node.type === 'freetext' || node.type === 'checklist') ? [] : createDefaultPorts(),
       };
     });
 
@@ -200,7 +202,7 @@ export function useCanvasState() {
     const newNodes: CanvasNode[] = clipNodes.map((node) => {
       const newId = crypto.randomUUID();
       idMap.set(node.id, newId);
-      const newPorts = node.type === 'freetext' ? [] : createDefaultPorts();
+      const newPorts = (node.type === 'freetext' || node.type === 'checklist') ? [] : createDefaultPorts();
       // Map old port ids to new ones
       node.ports.forEach((oldPort, i) => {
         if (newPorts[i]) portMap.set(oldPort.id, newPorts[i].id);
