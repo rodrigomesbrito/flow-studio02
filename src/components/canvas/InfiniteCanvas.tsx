@@ -724,6 +724,13 @@ export function InfiniteCanvas() {
         }
       }
 
+      // Ctrl+A select all
+      if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+        e.preventDefault();
+        const allIds = new Set(nodesRef.current.map(n => n.id));
+        setSelectedNodeIds(allIds);
+      }
+
       // Ctrl+Z / Ctrl+Shift+Z
       if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
         e.preventDefault();
