@@ -14,6 +14,8 @@ const getNodeDefaults = (type: NodeType) => {
       return { width: 240, height: 60, title: 'Texto livre' };
     case 'image':
       return { width: 280, height: 300, title: 'Image' };
+    case 'checklist':
+      return { width: 280, height: 220, title: 'Checklist' };
     default:
       return { width: 320, height: 180, title: 'Text' };
   }
