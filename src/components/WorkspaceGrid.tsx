@@ -77,7 +77,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
       <ContextMenuItem onClick={() => window.open(`${window.location.origin}/${item.type === 'project' ? 'project' : 'canvas'}/${item.id}`, '_blank')}>
         <ExternalLink size={14} className="mr-2" /> Open in a new tab
       </ContextMenuItem>
-      <ContextMenuItem onClick={() => startRename(item)}>
+      <ContextMenuItem onSelect={(e) => { e.preventDefault(); startRename(item); }}>
         <Pencil size={14} className="mr-2" /> Rename
       </ContextMenuItem>
       <ContextMenuItem onClick={() => deleteItem(item.id)} className="text-destructive">
