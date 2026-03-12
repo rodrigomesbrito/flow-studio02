@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      canvas_data: {
+        Row: {
+          canvas_id: string
+          connections: Json
+          id: string
+          nodes: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          canvas_id: string
+          connections?: Json
+          id?: string
+          nodes?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          canvas_id?: string
+          connections?: Json
+          id?: string
+          nodes?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_data_canvas_id_fkey"
+            columns: ["canvas_id"]
+            isOneToOne: true
+            referencedRelation: "workspace_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -40,6 +75,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      workspace_items: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
