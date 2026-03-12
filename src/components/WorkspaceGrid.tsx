@@ -177,7 +177,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
               <ContextMenu key={item.id}>
                 <ContextMenuTrigger>
                   <div
-                    onClick={() => { if (renamingId === item.id) return; handleOpen(item); }}
+                    onClick={() => { if (renamingRef.current === item.id || renamingId === item.id) return; handleOpen(item); }}
                     className="group relative rounded-xl border border-border bg-card hover:border-primary/30 transition-colors cursor-pointer"
                   >
                     {/* Thumbnail */}
