@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { CanvasNode, Position } from '@/types/canvas';
 import { Plus, GripVertical, Lock } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -30,14 +30,18 @@ interface ChecklistNodeProps {
   onPortDragStart: (nodeId: string, portId: string) => void;
 }
 
-function parseChecklist(content: string): ChecklistItem[] {
-  if (!content) return [{ id: crypto.randomUUID(), text: '', checked: false }];
+function createEmptyChecklistItem(id: string): ChecklistItem {
+  return { id, text: '', checked: false };
+}
+
+function parseChecklist(content: string, fallbackId: string): ChecklistItem[] {
+  if (!content) return [createEmptyChecklistItem(fallbackId)];
   try {
     const parsed = JSON.parse(content);
     if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    return [{ id: crypto.randomUUID(), text: '', checked: false }];
+    return [createEmptyChecklistItem(fallbackId)];
   } catch {
-    return [{ id: crypto.randomUUID(), text: '', checked: false }];
+    return [createEmptyChecklistItem(fallbackId)];
   }
 }
 
@@ -57,13 +61,23 @@ export function ChecklistNode({
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const initialItemIdRef = useRef(crypto.randomUUID());
   const isLocked = node.locked ?? false;
 
-  const items = parseChecklist(node.content);
+  const items = useMemo(
+    () => parseChecklist(node.content, initialItemIdRef.current),
+    [node.content],
+  );
+
+  useEffect(() => {
+    if (!node.content && !isLocked) {
+      onUpdate({ content: JSON.stringify(items) });
+    }
+  }, [node.content, isLocked, onUpdate, items]);
 
   // Auto-focus first input when node is first created (empty first item)
   useEffect(() => {
-    if (items.length === 1 && items[0].text === '' && !node.content && firstInputRef.current) {
+    if (items.length === 1 && items[0].text === '' && firstInputRef.current) {
       firstInputRef.current.focus();
     }
   }, []); // only on mount

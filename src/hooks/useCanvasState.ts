@@ -29,13 +29,17 @@ const NO_PORTS_TYPES: NodeType[] = ['freetext', 'frame'];
 
 const createNode = (type: NodeType, position: Position): CanvasNode => {
   const defaults = getNodeDefaults(type);
+  const initialContent = type === 'checklist'
+    ? JSON.stringify([{ id: crypto.randomUUID(), text: '', checked: false }])
+    : '';
+
   const node: CanvasNode = {
     id: crypto.randomUUID(),
     type,
     position,
     size: { width: defaults.width, height: defaults.height },
     title: defaults.title,
-    content: '',
+    content: initialContent,
     ports: NO_PORTS_TYPES.includes(type) ? [] : createDefaultPorts(),
   };
   if (type === 'freetext') {
