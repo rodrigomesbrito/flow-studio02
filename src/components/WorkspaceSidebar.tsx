@@ -1,4 +1,5 @@
-import { FolderOpen, Plus } from 'lucide-react';
+import { FolderOpen, Plus, LogOut } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface WorkspaceSidebarProps {
