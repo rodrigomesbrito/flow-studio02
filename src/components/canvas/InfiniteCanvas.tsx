@@ -408,6 +408,26 @@ export function InfiniteCanvas() {
     setZoom(newZoom);
   }, [zoom, offset, setOffset, setZoom]);
 
+  // Check if a node is inside a frame
+  const getNodesInsideFrame = useCallback((frameId: string): string[] => {
+    const frame = nodes.find(n => n.id === frameId);
+    if (!frame || frame.type !== 'frame') return [];
+    
+    return nodes
+      .filter(n => n.id !== frameId && n.type !== 'frame')
+      .filter(n => {
+        const nx = n.position.x;
+        const ny = n.position.y;
+        return (
+          nx >= frame.position.x &&
+          ny >= frame.position.y &&
+          nx + n.size.width <= frame.position.x + frame.size.width &&
+          ny + n.size.height <= frame.position.y + frame.size.height
+        );
+      })
+      .map(n => n.id);
+  }, [nodes]);
+
   const handleNodeDragStart = useCallback((nodeId: string, startMouse: Position, altKey?: boolean) => {
     if (effectiveTool === 'hand') return;
     const node = nodes.find((item) => item.id === nodeId);
@@ -428,6 +448,15 @@ export function InfiniteCanvas() {
       members.forEach(m => expanded.add(m));
     });
     dragging = expanded;
+
+    // If dragging a frame, include all nodes inside it
+    dragging.forEach(id => {
+      const n = nodes.find(item => item.id === id);
+      if (n?.type === 'frame') {
+        const children = getNodesInsideFrame(id);
+        children.forEach(childId => dragging.add(childId));
+      }
+    });
 
     // Alt+drag: duplicate first, then drag the duplicates
     if (altKey && !altDragDuplicated.current) {
@@ -462,7 +491,7 @@ export function InfiniteCanvas() {
 
     setDraggingNodeId(nodeId);
     dragStart.current = startMouse;
-  }, [effectiveTool, nodes, selectedNodeIds, setSelectedNodeIds, duplicateNodes, getGroupMembers]);
+  }, [effectiveTool, nodes, selectedNodeIds, setSelectedNodeIds, duplicateNodes, getGroupMembers, getNodesInsideFrame]);
 
   const handlePortDragStart = useCallback((nodeId: string, portId: string) => {
     if (effectiveTool === 'hand') return;
