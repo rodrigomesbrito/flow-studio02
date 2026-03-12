@@ -400,6 +400,7 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
     setOffset,
     setZoom,
     setSelectedNodeIds,
+    loadData,
     addNode,
     addNodeAt,
     updateNode,
