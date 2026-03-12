@@ -676,7 +676,22 @@ export function InfiniteCanvas() {
                 />
               )}
 
-              {nodes.map((node) =>
+              {/* Render frames first (behind other nodes) */}
+              {nodes.filter(n => n.type === 'frame').map((node) => (
+                <FrameNode
+                  key={node.id}
+                  node={node}
+                  zoom={zoom}
+                  isSelected={selectedNodeIds.has(node.id)}
+                  onSelect={(e) => handleNodeSelect(node.id, e)}
+                  onUpdate={(updates) => updateNode(node.id, updates)}
+                  onDelete={() => deleteNode(node.id)}
+                  onDragStart={handleNodeDragStart}
+                />
+              ))}
+
+              {/* Render non-frame nodes on top */}
+              {nodes.filter(n => n.type !== 'frame').map((node) =>
                 node.type === 'freetext' ? (
                   <FreeTextNode
                     key={node.id}
