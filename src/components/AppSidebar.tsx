@@ -1,4 +1,4 @@
-import { Home, Type, Image, ArrowLeft, TextCursorInput, CheckSquare } from 'lucide-react';
+import { Home, Type, Image, ArrowLeft, TextCursorInput, CheckSquare, Frame } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useCanvasTools } from '@/contexts/CanvasToolsContext';
@@ -9,6 +9,7 @@ const canvasTools: { icon: typeof Type; label: string; type: NodeType }[] = [
   { icon: Image, label: 'Add Image', type: 'image' },
   { icon: TextCursorInput, label: 'Texto livre', type: 'freetext' },
   { icon: CheckSquare, label: 'Checklist', type: 'checklist' },
+  { icon: Frame, label: 'Frame', type: 'frame' },
 ];
 
 export function AppSidebar() {

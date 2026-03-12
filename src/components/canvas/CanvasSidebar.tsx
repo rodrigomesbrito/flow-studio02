@@ -20,6 +20,7 @@ const nodeButtons: { icon: typeof Type; label: string; type: NodeType }[] = [
   { icon: Image, label: 'Imagem', type: 'image' },
   { icon: TextCursorInput, label: 'Texto livre', type: 'freetext' },
   { icon: CheckSquare, label: 'Checklist', type: 'checklist' },
+  { icon: Frame, label: 'Frame', type: 'frame' },
 ];
 
 export function CanvasSidebar({ onAddNode }: CanvasSidebarProps) {

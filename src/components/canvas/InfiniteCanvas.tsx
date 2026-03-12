@@ -750,6 +750,11 @@ export function InfiniteCanvas() {
             <CheckSquare size={14} className="text-muted-foreground" />
             Adicionar checklist
           </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => handleContextMenuAdd('frame')} className="gap-2 text-foreground">
+            <Frame size={14} className="text-muted-foreground" />
+            Adicionar frame
+          </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
 
