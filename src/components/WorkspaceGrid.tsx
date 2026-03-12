@@ -55,7 +55,9 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
     }
   };
 
-  const startRename = (item: WorkspaceItem) => {
+  const startRename = (item: WorkspaceItem, e?: Event) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     setRenamingId(item.id);
     setRenameValue(item.name);
   };
@@ -75,7 +77,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
       <ContextMenuItem onClick={() => window.open(`${window.location.origin}/${item.type === 'project' ? 'project' : 'canvas'}/${item.id}`, '_blank')}>
         <ExternalLink size={14} className="mr-2" /> Open in a new tab
       </ContextMenuItem>
-      <ContextMenuItem onClick={() => startRename(item)}>
+      <ContextMenuItem onSelect={(e) => { e.preventDefault(); startRename(item); }}>
         <Pencil size={14} className="mr-2" /> Rename
       </ContextMenuItem>
       <ContextMenuItem onClick={() => deleteItem(item.id)} className="text-destructive">
@@ -92,7 +94,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
       <DropdownMenuItem onClick={() => window.open(`${window.location.origin}/${item.type === 'project' ? 'project' : 'canvas'}/${item.id}`, '_blank')}>
         <ExternalLink size={14} className="mr-2" /> Open in a new tab
       </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => startRename(item)}>
+      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); startRename(item); }}>
         <Pencil size={14} className="mr-2" /> Rename
       </DropdownMenuItem>
       <DropdownMenuItem onClick={() => deleteItem(item.id)} className="text-destructive">
@@ -174,7 +176,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
               <ContextMenu key={item.id}>
                 <ContextMenuTrigger>
                   <div
-                    onClick={() => renamingId !== item.id && handleOpen(item)}
+                    onClick={() => { if (renamingId === item.id) return; handleOpen(item); }}
                     className="group relative rounded-xl border border-border bg-card hover:border-primary/30 transition-colors cursor-pointer"
                   >
                     {/* Thumbnail */}
@@ -241,7 +243,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
               <ContextMenu key={item.id}>
                 <ContextMenuTrigger>
                   <div
-                    onClick={() => renamingId !== item.id && handleOpen(item)}
+                    onClick={() => { if (renamingId === item.id) return; handleOpen(item); }}
                     className="group flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer"
                   >
                     <div className="w-8 h-8 rounded-md bg-secondary flex items-center justify-center flex-shrink-0">
