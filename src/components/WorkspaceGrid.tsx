@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FolderOpen, LayoutGrid, Search, List, Grid3X3, MoreHorizontal, Pencil, Trash2, ExternalLink, FolderInput } from 'lucide-react';
 import { WorkspaceItem } from '@/types/workspace';
