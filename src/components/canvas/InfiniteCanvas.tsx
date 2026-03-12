@@ -26,19 +26,27 @@ interface SelectionBox {
   currentY: number;
 }
 
-function getBoxRect(box: SelectionBox) {
-  return {
-    x: Math.min(box.startX, box.currentX),
-    y: Math.min(box.startY, box.currentX),
-    width: Math.abs(box.currentX - box.startX),
-    height: Math.abs(box.currentY - box.startY),
-  };
-}
-
 // Grouping types
 interface NodeGroup {
   id: string;
   nodeIds: Set<string>;
+}
+
+// Snap / alignment types
+interface AlignmentGuide {
+  type: 'horizontal' | 'vertical';
+  position: number; // canvas coordinate
+  start: number;
+  end: number;
+}
+
+const GRID_SIZE = 24;
+const GRID_SNAP_THRESHOLD = 8;
+const ALIGN_SNAP_THRESHOLD = 6;
+
+function snapToGrid(value: number): number {
+  const snapped = Math.round(value / GRID_SIZE) * GRID_SIZE;
+  return Math.abs(value - snapped) < GRID_SNAP_THRESHOLD ? snapped : value;
 }
 
 export function InfiniteCanvas() {
@@ -92,6 +100,9 @@ export function InfiniteCanvas() {
 
   // Grouping
   const [groups, setGroups] = useState<NodeGroup[]>([]);
+
+  // Alignment guides
+  const [alignmentGuides, setAlignmentGuides] = useState<AlignmentGuide[]>([]);
 
   // Context menu position (canvas coords)
   const contextMenuCanvasPos = useRef<Position>({ x: 0, y: 0 });
@@ -174,7 +185,6 @@ export function InfiniteCanvas() {
       id: crypto.randomUUID(),
       nodeIds: new Set(selectedNodeIds),
     };
-    // Remove nodes from existing groups first
     setGroups(prev => {
       const cleaned = prev.map(g => ({
         ...g,
@@ -203,6 +213,143 @@ export function InfiniteCanvas() {
     }
     return new Set([nodeId]);
   }, [groups]);
+
+  // Compute alignment snap + guides
+  const computeSnapAndGuides = useCallback((
+    primaryNodeId: string,
+    rawX: number,
+    rawY: number,
+    draggedIds: Set<string>
+  ): { snappedX: number; snappedY: number; guides: AlignmentGuide[] } => {
+    const primaryNode = nodesRef.current.find(n => n.id === primaryNodeId);
+    if (!primaryNode) return { snappedX: rawX, snappedY: rawY, guides: [] };
+
+    const w = primaryNode.size.width;
+    const h = primaryNode.size.height;
+
+    // Edges and center of the dragged node
+    const myLeft = rawX;
+    const myRight = rawX + w;
+    const myCenterX = rawX + w / 2;
+    const myTop = rawY;
+    const myBottom = rawY + h;
+    const myCenterY = rawY + h / 2;
+
+    // Gather reference edges from other nodes
+    const otherNodes = nodesRef.current.filter(n => !draggedIds.has(n.id));
+
+    let bestDx = Infinity;
+    let bestDy = Infinity;
+    let snapX = rawX;
+    let snapY = rawY;
+    const guides: AlignmentGuide[] = [];
+
+    for (const other of otherNodes) {
+      const oLeft = other.position.x;
+      const oRight = other.position.x + other.size.width;
+      const oCenterX = other.position.x + other.size.width / 2;
+      const oTop = other.position.y;
+      const oBottom = other.position.y + other.size.height;
+      const oCenterY = other.position.y + other.size.height / 2;
+
+      // Vertical alignment (snap X)
+      const xPairs = [
+        { my: myLeft, ref: oLeft },
+        { my: myLeft, ref: oRight },
+        { my: myRight, ref: oLeft },
+        { my: myRight, ref: oRight },
+        { my: myCenterX, ref: oCenterX },
+        { my: myLeft, ref: oCenterX },
+        { my: myRight, ref: oCenterX },
+        { my: myCenterX, ref: oLeft },
+        { my: myCenterX, ref: oRight },
+      ];
+
+      for (const pair of xPairs) {
+        const diff = Math.abs(pair.my - pair.ref);
+        if (diff < ALIGN_SNAP_THRESHOLD && diff < Math.abs(bestDx)) {
+          bestDx = pair.ref - pair.my;
+        }
+      }
+
+      // Horizontal alignment (snap Y)
+      const yPairs = [
+        { my: myTop, ref: oTop },
+        { my: myTop, ref: oBottom },
+        { my: myBottom, ref: oTop },
+        { my: myBottom, ref: oBottom },
+        { my: myCenterY, ref: oCenterY },
+        { my: myTop, ref: oCenterY },
+        { my: myBottom, ref: oCenterY },
+        { my: myCenterY, ref: oTop },
+        { my: myCenterY, ref: oBottom },
+      ];
+
+      for (const pair of yPairs) {
+        const diff = Math.abs(pair.my - pair.ref);
+        if (diff < ALIGN_SNAP_THRESHOLD && diff < Math.abs(bestDy)) {
+          bestDy = pair.ref - pair.my;
+        }
+      }
+    }
+
+    if (Math.abs(bestDx) < ALIGN_SNAP_THRESHOLD) {
+      snapX = rawX + bestDx;
+    } else {
+      snapX = snapToGrid(rawX);
+    }
+
+    if (Math.abs(bestDy) < ALIGN_SNAP_THRESHOLD) {
+      snapY = rawY + bestDy;
+    } else {
+      snapY = snapToGrid(rawY);
+    }
+
+    // Build guide lines for snapped positions
+    const finalLeft = snapX;
+    const finalRight = snapX + w;
+    const finalCenterX = snapX + w / 2;
+    const finalTop = snapY;
+    const finalBottom = snapY + h;
+    const finalCenterY = snapY + h / 2;
+
+    for (const other of otherNodes) {
+      const oLeft = other.position.x;
+      const oRight = other.position.x + other.size.width;
+      const oCenterX = other.position.x + other.size.width / 2;
+      const oTop = other.position.y;
+      const oBottom = other.position.y + other.size.height;
+      const oCenterY = other.position.y + other.size.height / 2;
+
+      // Vertical guides
+      const vEdges = [finalLeft, finalRight, finalCenterX];
+      const oVEdges = [oLeft, oRight, oCenterX];
+      for (const ve of vEdges) {
+        for (const ov of oVEdges) {
+          if (Math.abs(ve - ov) < 1) {
+            const minY = Math.min(finalTop, oTop);
+            const maxY = Math.max(finalBottom, oBottom);
+            guides.push({ type: 'vertical', position: ve, start: minY, end: maxY });
+          }
+        }
+      }
+
+      // Horizontal guides
+      const hEdges = [finalTop, finalBottom, finalCenterY];
+      const oHEdges = [oTop, oBottom, oCenterY];
+      for (const he of hEdges) {
+        for (const oh of oHEdges) {
+          if (Math.abs(he - oh) < 1) {
+            const minX = Math.min(finalLeft, oLeft);
+            const maxX = Math.max(finalRight, oRight);
+            guides.push({ type: 'horizontal', position: he, start: minX, end: maxX });
+          }
+        }
+      }
+    }
+
+    return { snappedX: snapX, snappedY: snapY, guides };
+  }, []);
 
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 1) {
@@ -253,16 +400,29 @@ export function InfiniteCanvas() {
       return;
     }
 
-    // Group drag
+    // Group drag with snap
     if (draggingNodeId) {
       const dx = (clientX - dragStart.current.x) / zoom;
       const dy = (clientY - dragStart.current.y) / zoom;
-      
-      nodeStartPositions.current.forEach((startPos, nodeId) => {
-        updateNode(nodeId, {
-          position: { x: startPos.x + dx, y: startPos.y + dy }
+
+      const primaryStart = nodeStartPositions.current.get(draggingNodeId);
+      if (primaryStart) {
+        const rawX = primaryStart.x + dx;
+        const rawY = primaryStart.y + dy;
+        const draggedIds = new Set(nodeStartPositions.current.keys());
+
+        const { snappedX, snappedY, guides } = computeSnapAndGuides(draggingNodeId, rawX, rawY, draggedIds);
+        const snapDx = snappedX - primaryStart.x;
+        const snapDy = snappedY - primaryStart.y;
+
+        nodeStartPositions.current.forEach((startPos, nodeId) => {
+          updateNode(nodeId, {
+            position: { x: startPos.x + snapDx, y: startPos.y + snapDy }
+          });
         });
-      });
+
+        setAlignmentGuides(guides);
+      }
     }
 
     if (connectionDragRef.current) {
@@ -289,7 +449,7 @@ export function InfiniteCanvas() {
         }
       }
     }
-  }, [draggingNodeId, isPanning, screenToCanvas, setOffset, updateNode, zoom]);
+  }, [draggingNodeId, isPanning, screenToCanvas, setOffset, updateNode, zoom, computeSnapAndGuides]);
 
   const finishMarqueeSelection = useCallback(() => {
     if (!isMarqueeActive.current) return;
@@ -367,6 +527,7 @@ export function InfiniteCanvas() {
   const handleCanvasMouseUp = useCallback((e: React.MouseEvent) => {
     setIsPanning(false);
     setDraggingNodeId(null);
+    setAlignmentGuides([]);
     altDragDuplicated.current = false;
     finishMarqueeSelection();
     finishConnectionDrag(e.clientX, e.clientY);
@@ -380,6 +541,7 @@ export function InfiniteCanvas() {
     const handleWindowMouseUp = (e: MouseEvent) => {
       setIsPanning(false);
       setDraggingNodeId(null);
+      setAlignmentGuides([]);
       altDragDuplicated.current = false;
       finishMarqueeSelection();
       finishConnectionDrag(e.clientX, e.clientY);
@@ -662,6 +824,42 @@ export function InfiniteCanvas() {
                   setSelectedConnectionId(null);
                 }}
               />
+
+              {/* Alignment guide lines */}
+              {alignmentGuides.length > 0 && (
+                <svg
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ overflow: 'visible', zIndex: 9999 }}
+                >
+                  {alignmentGuides.map((guide, i) => (
+                    guide.type === 'vertical' ? (
+                      <line
+                        key={i}
+                        x1={guide.position}
+                        y1={guide.start - 20}
+                        x2={guide.position}
+                        y2={guide.end + 20}
+                        stroke="hsl(270 60% 65%)"
+                        strokeWidth={1 / zoom}
+                        strokeDasharray={`${4 / zoom} ${4 / zoom}`}
+                        opacity={0.6}
+                      />
+                    ) : (
+                      <line
+                        key={i}
+                        x1={guide.start - 20}
+                        y1={guide.position}
+                        x2={guide.end + 20}
+                        y2={guide.position}
+                        stroke="hsl(270 60% 65%)"
+                        strokeWidth={1 / zoom}
+                        strokeDasharray={`${4 / zoom} ${4 / zoom}`}
+                        opacity={0.6}
+                      />
+                    )
+                  ))}
+                </svg>
+              )}
 
               {/* Marquee selection box */}
               {marqueeStyle && (
