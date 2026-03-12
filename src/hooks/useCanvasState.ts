@@ -145,7 +145,7 @@ export function useCanvasState() {
         ...cloneState(node),
         id: newId,
         position: { x: node.position.x + offsetDelta.x, y: node.position.y + offsetDelta.y },
-        ports: node.type === 'freetext' ? [] : createDefaultPorts(),
+        ports: (node.type === 'freetext' || node.type === 'checklist') ? [] : createDefaultPorts(),
       };
     });
 
