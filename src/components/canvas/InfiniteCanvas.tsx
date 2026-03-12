@@ -594,6 +594,8 @@ export function InfiniteCanvas() {
     if (effectiveTool === 'hand') return;
     const node = nodes.find((item) => item.id === nodeId);
     if (!node) return;
+    // Don't drag locked nodes
+    if (node.locked) return;
 
     // Determine which nodes to drag — include group members
     let dragging: Set<string>;
@@ -619,6 +621,15 @@ export function InfiniteCanvas() {
         children.forEach(childId => dragging.add(childId));
       }
     });
+
+    // Remove locked nodes from drag set
+    const unlocked = new Set<string>();
+    dragging.forEach(id => {
+      const n = nodes.find(item => item.id === id);
+      if (n && !n.locked) unlocked.add(id);
+    });
+    dragging = unlocked;
+    if (dragging.size === 0) return;
 
     // Alt+drag: duplicate first, then drag the duplicates
     if (altKey && !altDragDuplicated.current) {
