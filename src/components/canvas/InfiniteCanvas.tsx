@@ -4,12 +4,18 @@ import { useCanvasTools } from '@/contexts/CanvasToolsContext';
 import { BottomToolbar } from './BottomToolbar';
 import { NodeCard } from './NodeCard';
 import { FreeTextNode } from './FreeTextNode';
+import { ChecklistNode } from './ChecklistNode';
 import { ConnectionLines } from './ConnectionLines';
-import { MiniMap } from './MiniMap';
-import { SaveIndicator } from './SaveIndicator';
-import { Position, CanvasTool } from '@/types/canvas';
+import { Position, CanvasTool, NodeType } from '@/types/canvas';
 import { DEFAULT_EDGE_COLOR } from './connection-utils';
 import { getHandleWorldPosition, findClosestCompatibleHandle, HANDLE_HIT_RADIUS } from './connection-utils';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import { Type, Image, CheckSquare } from 'lucide-react';
 
 interface SelectionBox {
   startX: number;
@@ -21,10 +27,16 @@ interface SelectionBox {
 function getBoxRect(box: SelectionBox) {
   return {
     x: Math.min(box.startX, box.currentX),
-    y: Math.min(box.startY, box.currentY),
+    y: Math.min(box.startY, box.currentX),
     width: Math.abs(box.currentX - box.startX),
     height: Math.abs(box.currentY - box.startY),
   };
+}
+
+// Grouping types
+interface NodeGroup {
+  id: string;
+  nodeIds: Set<string>;
 }
 
 export function InfiniteCanvas() {
@@ -76,6 +88,12 @@ export function InfiniteCanvas() {
   // Track newly created freetext node for auto-edit
   const [autoEditNodeId, setAutoEditNodeId] = useState<string | null>(null);
 
+  // Grouping
+  const [groups, setGroups] = useState<NodeGroup[]>([]);
+
+  // Context menu position (canvas coords)
+  const contextMenuCanvasPos = useRef<Position>({ x: 0, y: 0 });
+
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
 
@@ -105,14 +123,6 @@ export function InfiniteCanvas() {
       centerOnContent();
     }
   }, [nodes.length, centerOnContent]);
-
-  // Canvas dimensions for minimap
-  const [canvasDimensions, setCanvasDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
-  useEffect(() => {
-    const handleResize = () => setCanvasDimensions({ width: window.innerWidth, height: window.innerHeight });
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   const getCursorStyle = () => {
     if (isPanning) return 'grabbing';
@@ -148,6 +158,49 @@ export function InfiniteCanvas() {
     const nodeId = addNodeAt('freetext', canvasPos);
     setAutoEditNodeId(nodeId);
   }, [effectiveTool, screenToCanvas, addNodeAt]);
+
+  // Context menu: add node at right-click position
+  const handleContextMenuAdd = useCallback((type: NodeType) => {
+    const pos = contextMenuCanvasPos.current;
+    addNodeAt(type, pos);
+  }, [addNodeAt]);
+
+  // Grouping: Ctrl+G to group selected, Ctrl+Shift+G to ungroup
+  const groupSelected = useCallback(() => {
+    if (selectedNodeIds.size < 2) return;
+    const newGroup: NodeGroup = {
+      id: crypto.randomUUID(),
+      nodeIds: new Set(selectedNodeIds),
+    };
+    // Remove nodes from existing groups first
+    setGroups(prev => {
+      const cleaned = prev.map(g => ({
+        ...g,
+        nodeIds: new Set([...g.nodeIds].filter(id => !selectedNodeIds.has(id))),
+      })).filter(g => g.nodeIds.size > 1);
+      return [...cleaned, newGroup];
+    });
+  }, [selectedNodeIds]);
+
+  const ungroupSelected = useCallback(() => {
+    if (selectedNodeIds.size === 0) return;
+    setGroups(prev =>
+      prev.map(g => ({
+        ...g,
+        nodeIds: new Set([...g.nodeIds].filter(id => !selectedNodeIds.has(id))),
+      })).filter(g => g.nodeIds.size > 1)
+    );
+  }, [selectedNodeIds]);
+
+  // Find all nodes in the same group as a given node
+  const getGroupMembers = useCallback((nodeId: string): Set<string> => {
+    for (const group of groups) {
+      if (group.nodeIds.has(nodeId)) {
+        return group.nodeIds;
+      }
+    }
+    return new Set([nodeId]);
+  }, [groups]);
 
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 1) {
@@ -203,7 +256,6 @@ export function InfiniteCanvas() {
       const dx = (clientX - dragStart.current.x) / zoom;
       const dy = (clientY - dragStart.current.y) / zoom;
       
-      // Move all selected nodes together
       nodeStartPositions.current.forEach((startPos, nodeId) => {
         updateNode(nodeId, {
           position: { x: startPos.x + dx, y: startPos.y + dy }
@@ -243,8 +295,13 @@ export function InfiniteCanvas() {
 
     setSelectionBox((box) => {
       if (!box) return null;
-      const rect = getBoxRect(box);
-      if (rect.width < 5 && rect.height < 5) return null; // too small, treat as click
+      const minX = Math.min(box.startX, box.currentX);
+      const minY = Math.min(box.startY, box.currentY);
+      const maxX = Math.max(box.startX, box.currentX);
+      const maxY = Math.max(box.startY, box.currentY);
+      const w = maxX - minX;
+      const h = maxY - minY;
+      if (w < 5 && h < 5) return null;
 
       const hitIds = new Set<string>();
       nodesRef.current.forEach((node) => {
@@ -253,13 +310,7 @@ export function InfiniteCanvas() {
         const nw = node.size.width;
         const nh = node.size.height;
 
-        // Check overlap
-        if (
-          nx + nw > rect.x &&
-          nx < rect.x + rect.width &&
-          ny + nh > rect.y &&
-          ny < rect.y + rect.height
-        ) {
+        if (nx + nw > minX && nx < maxX && ny + nh > minY && ny < maxY) {
           hitIds.add(node.id);
         }
       });
@@ -360,19 +411,30 @@ export function InfiniteCanvas() {
     const node = nodes.find((item) => item.id === nodeId);
     if (!node) return;
 
-    // Determine which nodes to drag
-    let dragging = selectedNodeIds.has(nodeId) ? selectedNodeIds : new Set([nodeId]);
+    // Determine which nodes to drag — include group members
+    let dragging: Set<string>;
+    if (selectedNodeIds.has(nodeId)) {
+      dragging = new Set(selectedNodeIds);
+    } else {
+      dragging = getGroupMembers(nodeId);
+    }
+
+    // Also expand to include all group members of any selected node
+    const expanded = new Set(dragging);
+    dragging.forEach(id => {
+      const members = getGroupMembers(id);
+      members.forEach(m => expanded.add(m));
+    });
+    dragging = expanded;
 
     // Alt+drag: duplicate first, then drag the duplicates
     if (altKey && !altDragDuplicated.current) {
       altDragDuplicated.current = true;
       const idMap = duplicateNodes(dragging, { x: 0, y: 0 });
-      // Now select and drag the new nodes
       const newIds = new Set(Array.from(dragging).map((id) => idMap.get(id) || id));
       dragging = newIds;
       setSelectedNodeIds(newIds);
 
-      // Store start positions for the NEW nodes (they have same positions as originals)
       nodeStartPositions.current = new Map();
       const latestNodes = nodesRef.current;
       newIds.forEach((id) => {
@@ -392,14 +454,13 @@ export function InfiniteCanvas() {
       if (n) nodeStartPositions.current.set(id, { ...n.position });
     });
 
-    // If clicking a non-selected node without shift, select only that node
     if (!selectedNodeIds.has(nodeId)) {
-      setSelectedNodeIds(new Set([nodeId]));
+      setSelectedNodeIds(dragging);
     }
 
     setDraggingNodeId(nodeId);
     dragStart.current = startMouse;
-  }, [effectiveTool, nodes, selectedNodeIds, setSelectedNodeIds, duplicateNodes]);
+  }, [effectiveTool, nodes, selectedNodeIds, setSelectedNodeIds, duplicateNodes, getGroupMembers]);
 
   const handlePortDragStart = useCallback((nodeId: string, portId: string) => {
     if (effectiveTool === 'hand') return;
@@ -427,9 +488,11 @@ export function InfiniteCanvas() {
         return next;
       });
     } else {
-      setSelectedNodeIds(new Set([nodeId]));
+      // Select node + all group members
+      const members = getGroupMembers(nodeId);
+      setSelectedNodeIds(members);
     }
-  }, [setSelectedNodeIds]);
+  }, [setSelectedNodeIds, getGroupMembers]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -476,6 +539,18 @@ export function InfiniteCanvas() {
         pasteNodes();
       }
 
+      // Ctrl+G group
+      if ((e.metaKey || e.ctrlKey) && e.key === 'g' && !e.shiftKey) {
+        e.preventDefault();
+        groupSelected();
+      }
+
+      // Ctrl+Shift+G ungroup
+      if ((e.metaKey || e.ctrlKey) && e.key === 'g' && e.shiftKey) {
+        e.preventDefault();
+        ungroupSelected();
+      }
+
       // Tool shortcuts (only without modifiers)
       if (!e.metaKey && !e.ctrlKey && !e.altKey) {
         if (e.key === 'v' || e.key === 'V') setActiveTool('cursor');
@@ -504,112 +579,133 @@ export function InfiniteCanvas() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [selectedNodeIds, selectedConnectionId, deleteNode, deleteConnection, undo, redo, setSelectedNodeIds, resetConnectionDrag, activeTool, addNode, copyNodes, pasteNodes]);
+  }, [selectedNodeIds, selectedConnectionId, deleteNode, deleteConnection, undo, redo, setSelectedNodeIds, resetConnectionDrag, activeTool, addNode, copyNodes, pasteNodes, groupSelected, ungroupSelected]);
 
   // Compute marquee box in screen coords for the overlay
   const marqueeStyle = selectionBox ? (() => {
-    const rect = getBoxRect(selectionBox);
+    const minX = Math.min(selectionBox.startX, selectionBox.currentX);
+    const minY = Math.min(selectionBox.startY, selectionBox.currentY);
     return {
-      left: rect.x,
-      top: rect.y,
-      width: rect.width,
-      height: rect.height,
+      left: minX,
+      top: minY,
+      width: Math.abs(selectionBox.currentX - selectionBox.startX),
+      height: Math.abs(selectionBox.currentY - selectionBox.startY),
     };
   })() : null;
 
-  // Save watch value (changes whenever nodes or connections change)
-  const saveWatchValue = useMemo(() => ({ n: nodes.length, c: connections.length, t: Date.now() }), [nodes, connections]);
+  // Track right-click position for context menu
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    contextMenuCanvasPos.current = screenToCanvas(e.clientX, e.clientY);
+  }, [screenToCanvas]);
 
   return (
     <div className="w-full h-screen overflow-hidden relative">
-      <SaveIndicator watchValue={saveWatchValue} />
-
-      <div
-        ref={canvasRef}
-        className="absolute inset-0 canvas-grid overflow-hidden"
-        style={{ cursor: getCursorStyle() }}
-        onMouseDown={handleCanvasMouseDown}
-        onMouseMove={handleCanvasMouseMove}
-        onMouseUp={handleCanvasMouseUp}
-        onDoubleClick={handleCanvasDoubleClick}
-        onWheel={handleWheel}
-      >
-        <div
-          style={{
-            transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
-            transformOrigin: '0 0',
-          }}
-        >
-          <ConnectionLines
-            connections={connections}
-            nodes={nodes}
-            tempConnection={tempConnection}
-            selectedConnectionId={selectedConnectionId}
-            onSelectConnection={setSelectedConnectionId}
-            onUpdateConnectionColor={updateConnectionColor}
-            onDeleteConnection={(id) => {
-              deleteConnection(id);
-              setSelectedConnectionId(null);
-            }}
-          />
-
-          {/* Marquee selection box */}
-          {marqueeStyle && (
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div
+            ref={canvasRef}
+            className="absolute inset-0 canvas-grid overflow-hidden"
+            style={{ cursor: getCursorStyle() }}
+            onMouseDown={handleCanvasMouseDown}
+            onMouseMove={handleCanvasMouseMove}
+            onMouseUp={handleCanvasMouseUp}
+            onDoubleClick={handleCanvasDoubleClick}
+            onWheel={handleWheel}
+            onContextMenu={handleContextMenu}
+          >
             <div
-              className="absolute border border-primary/60 bg-primary/10 pointer-events-none"
               style={{
-                left: marqueeStyle.left,
-                top: marqueeStyle.top,
-                width: marqueeStyle.width,
-                height: marqueeStyle.height,
+                transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+                transformOrigin: '0 0',
               }}
-            />
-          )}
-
-          {nodes.map((node) =>
-            node.type === 'freetext' ? (
-              <FreeTextNode
-                key={node.id}
-                node={node}
-                zoom={zoom}
-                isSelected={selectedNodeIds.has(node.id)}
-                autoEdit={autoEditNodeId === node.id}
-                onAutoEditConsumed={() => setAutoEditNodeId(null)}
-                onSelect={(e) => handleNodeSelect(node.id, e)}
-                onUpdate={(updates) => updateNode(node.id, updates)}
-                onDelete={() => deleteNode(node.id)}
-                onDragStart={handleNodeDragStart}
+            >
+              <ConnectionLines
+                connections={connections}
+                nodes={nodes}
+                tempConnection={tempConnection}
+                selectedConnectionId={selectedConnectionId}
+                onSelectConnection={setSelectedConnectionId}
+                onUpdateConnectionColor={updateConnectionColor}
+                onDeleteConnection={(id) => {
+                  deleteConnection(id);
+                  setSelectedConnectionId(null);
+                }}
               />
-            ) : (
-              <NodeCard
-                key={node.id}
-                node={node}
-                zoom={zoom}
-                isSelected={selectedNodeIds.has(node.id)}
-                activeSourceHandleId={activeSourceHandleId}
-                highlightedTargetHandleId={highlightedTargetHandleId}
-                portColors={portColorMap}
-                onSelect={(e) => handleNodeSelect(node.id, e)}
-                onUpdate={(updates) => updateNode(node.id, updates)}
-                onDelete={() => deleteNode(node.id)}
-                onDuplicate={() => duplicateNode(node.id)}
-                onDragStart={handleNodeDragStart}
-                onPortDragStart={handlePortDragStart}
-              />
-            )
-          )}
-        </div>
-      </div>
 
-      <MiniMap
-        nodes={nodes}
-        connections={connections}
-        offset={offset}
-        zoom={zoom}
-        canvasWidth={canvasDimensions.width}
-        canvasHeight={canvasDimensions.height}
-        onNavigate={setOffset}
-      />
+              {/* Marquee selection box */}
+              {marqueeStyle && (
+                <div
+                  className="absolute border border-primary/60 bg-primary/10 pointer-events-none"
+                  style={{
+                    left: marqueeStyle.left,
+                    top: marqueeStyle.top,
+                    width: marqueeStyle.width,
+                    height: marqueeStyle.height,
+                  }}
+                />
+              )}
+
+              {nodes.map((node) =>
+                node.type === 'freetext' ? (
+                  <FreeTextNode
+                    key={node.id}
+                    node={node}
+                    zoom={zoom}
+                    isSelected={selectedNodeIds.has(node.id)}
+                    autoEdit={autoEditNodeId === node.id}
+                    onAutoEditConsumed={() => setAutoEditNodeId(null)}
+                    onSelect={(e) => handleNodeSelect(node.id, e)}
+                    onUpdate={(updates) => updateNode(node.id, updates)}
+                    onDelete={() => deleteNode(node.id)}
+                    onDragStart={handleNodeDragStart}
+                  />
+                ) : node.type === 'checklist' ? (
+                  <ChecklistNode
+                    key={node.id}
+                    node={node}
+                    zoom={zoom}
+                    isSelected={selectedNodeIds.has(node.id)}
+                    onSelect={(e) => handleNodeSelect(node.id, e)}
+                    onUpdate={(updates) => updateNode(node.id, updates)}
+                    onDelete={() => deleteNode(node.id)}
+                    onDragStart={handleNodeDragStart}
+                  />
+                ) : (
+                  <NodeCard
+                    key={node.id}
+                    node={node}
+                    zoom={zoom}
+                    isSelected={selectedNodeIds.has(node.id)}
+                    activeSourceHandleId={activeSourceHandleId}
+                    highlightedTargetHandleId={highlightedTargetHandleId}
+                    portColors={portColorMap}
+                    onSelect={(e) => handleNodeSelect(node.id, e)}
+                    onUpdate={(updates) => updateNode(node.id, updates)}
+                    onDelete={() => deleteNode(node.id)}
+                    onDuplicate={() => duplicateNode(node.id)}
+                    onDragStart={handleNodeDragStart}
+                    onPortDragStart={handlePortDragStart}
+                  />
+                )
+              )}
+            </div>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-48 bg-card/95 backdrop-blur-xl border-border">
+          <ContextMenuItem onClick={() => handleContextMenuAdd('text')} className="gap-2 text-foreground">
+            <Type size={14} className="text-muted-foreground" />
+            Adicionar texto
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => handleContextMenuAdd('image')} className="gap-2 text-foreground">
+            <Image size={14} className="text-muted-foreground" />
+            Adicionar imagem
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => handleContextMenuAdd('checklist')} className="gap-2 text-foreground">
+            <CheckSquare size={14} className="text-muted-foreground" />
+            Adicionar checklist
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
 
       <BottomToolbar
         zoom={zoom}
