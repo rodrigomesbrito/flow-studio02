@@ -243,7 +243,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
               <ContextMenu key={item.id}>
                 <ContextMenuTrigger>
                   <div
-                    onClick={() => renamingId !== item.id && handleOpen(item)}
+                    onClick={() => { if (renamingId === item.id) return; handleOpen(item); }}
                     className="group flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer"
                   >
                     <div className="w-8 h-8 rounded-md bg-secondary flex items-center justify-center flex-shrink-0">
