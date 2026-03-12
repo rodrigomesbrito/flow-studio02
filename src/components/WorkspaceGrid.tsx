@@ -41,6 +41,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const renamingRef = useRef<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
 
   const filtered = items.filter(i =>
