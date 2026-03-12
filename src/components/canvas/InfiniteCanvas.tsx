@@ -56,8 +56,10 @@ interface InfiniteCanvasProps {
 }
 
 export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
+  const saveRef = useRef<(nodes: CanvasNode[], connections: Connection[]) => void>(() => {});
+
   const handleDataChange = useCallback((nodes: CanvasNode[], connections: Connection[]) => {
-    saveToDb(nodes, connections);
+    saveRef.current(nodes, connections);
   }, []);
 
   const {
@@ -71,11 +73,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
   } = useCanvasState(handleDataChange);
 
   const { save: saveToDb } = useCanvasData(canvasId, loadData);
-
-  // Fix: update the callback ref after saveToDb is available
-  useEffect(() => {
-    // no-op, the ref in useCanvasState picks up changes automatically
-  }, [saveToDb]);
+  saveRef.current = saveToDb;
 
   const { registerAddNode, unregisterAddNode } = useCanvasTools();
 
