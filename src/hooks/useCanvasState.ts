@@ -6,6 +6,8 @@ const DEFAULT_CONNECTION_COLOR = '#a855f7';
 const createDefaultPorts = () => [
   { id: crypto.randomUUID(), side: 'left' as const, type: 'input' as const },
   { id: crypto.randomUUID(), side: 'right' as const, type: 'output' as const },
+  { id: crypto.randomUUID(), side: 'top' as const, type: 'input' as const },
+  { id: crypto.randomUUID(), side: 'bottom' as const, type: 'output' as const },
 ];
 
 const getNodeDefaults = (type: NodeType) => {
@@ -23,7 +25,7 @@ const getNodeDefaults = (type: NodeType) => {
   }
 };
 
-const NO_PORTS_TYPES: NodeType[] = ['freetext', 'checklist', 'frame'];
+const NO_PORTS_TYPES: NodeType[] = ['freetext', 'frame'];
 
 const createNode = (type: NodeType, position: Position): CanvasNode => {
   const defaults = getNodeDefaults(type);
