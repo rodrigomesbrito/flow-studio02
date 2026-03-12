@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FolderOpen, LayoutGrid, Search, List, Grid3X3, MoreHorizontal, Pencil, Trash2, ExternalLink, FolderInput } from 'lucide-react';
 import { WorkspaceItem } from '@/types/workspace';
@@ -41,6 +41,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const renamingRef = useRef<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
 
   const filtered = items.filter(i =>
@@ -55,9 +56,8 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
     }
   };
 
-  const startRename = (item: WorkspaceItem, e?: Event) => {
-    e?.preventDefault();
-    e?.stopPropagation();
+  const startRename = (item: WorkspaceItem) => {
+    renamingRef.current = item.id;
     setRenamingId(item.id);
     setRenameValue(item.name);
   };
@@ -66,6 +66,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
     if (renamingId && renameValue.trim()) {
       renameItem(renamingId, renameValue.trim());
     }
+    renamingRef.current = null;
     setRenamingId(null);
   };
 
@@ -176,7 +177,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
               <ContextMenu key={item.id}>
                 <ContextMenuTrigger>
                   <div
-                    onClick={() => { if (renamingId === item.id) return; handleOpen(item); }}
+                    onClick={() => { if (renamingRef.current === item.id || renamingId === item.id) return; handleOpen(item); }}
                     className="group relative rounded-xl border border-border bg-card hover:border-primary/30 transition-colors cursor-pointer"
                   >
                     {/* Thumbnail */}
@@ -199,7 +200,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
                             onBlur={commitRename}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') commitRename();
-                              if (e.key === 'Escape') setRenamingId(null);
+                              if (e.key === 'Escape') { renamingRef.current = null; setRenamingId(null); }
                             }}
                             onClick={(e) => e.stopPropagation()}
                             className="w-full bg-transparent text-sm text-foreground font-medium outline-none border-b border-primary pb-0.5"
@@ -243,7 +244,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
               <ContextMenu key={item.id}>
                 <ContextMenuTrigger>
                   <div
-                    onClick={() => { if (renamingId === item.id) return; handleOpen(item); }}
+                    onClick={() => { if (renamingRef.current === item.id || renamingId === item.id) return; handleOpen(item); }}
                     className="group flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer"
                   >
                     <div className="w-8 h-8 rounded-md bg-secondary flex items-center justify-center flex-shrink-0">
@@ -262,7 +263,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
                           onBlur={commitRename}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') commitRename();
-                            if (e.key === 'Escape') setRenamingId(null);
+                            if (e.key === 'Escape') { renamingRef.current = null; setRenamingId(null); }
                           }}
                           onClick={(e) => e.stopPropagation()}
                           className="w-full bg-transparent text-sm text-foreground font-medium outline-none border-b border-primary pb-0.5"
