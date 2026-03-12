@@ -50,15 +50,25 @@ const createNode = (type: NodeType, position: Position): CanvasNode => {
 
 const cloneState = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
 
-export function useCanvasState() {
+export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections: Connection[]) => void) {
   const [nodes, setNodes] = useState<CanvasNode[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [offset, setOffset] = useState<Position>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
+  const onDataChangeRef = useRef(onDataChange);
+  onDataChangeRef.current = onDataChange;
 
   const historyRef = useRef<{ nodes: CanvasNode[]; connections: Connection[] }[]>([{ nodes: [], connections: [] }]);
   const historyIndexRef = useRef(0);
+
+  // Load initial data from outside
+  const loadData = useCallback((initialNodes: CanvasNode[], initialConnections: Connection[]) => {
+    setNodes(initialNodes);
+    setConnections(initialConnections);
+    historyRef.current = [{ nodes: cloneState(initialNodes), connections: cloneState(initialConnections) }];
+    historyIndexRef.current = 0;
+  }, []);
 
   // Clipboard for copy/paste
   const clipboardRef = useRef<{ nodes: CanvasNode[]; connections: Connection[] } | null>(null);
