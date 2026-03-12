@@ -34,7 +34,7 @@ const createNode = (type: NodeType, position: Position): CanvasNode => {
     size: { width: defaults.width, height: defaults.height },
     title: defaults.title,
     content: '',
-    ports: (type === 'freetext' || type === 'checklist') ? [] : createDefaultPorts(),
+    ports: NO_PORTS_TYPES.includes(type) ? [] : createDefaultPorts(),
   };
 };
 
