@@ -5,8 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 export function useCanvasData(
   canvasId: string | undefined,
-  setNodes: (nodes: CanvasNode[]) => void,
-  setConnections: (connections: Connection[]) => void,
+  loadData: (nodes: CanvasNode[], connections: Connection[]) => void,
 ) {
   const { user } = useAuth();
   const loaded = useRef(false);
@@ -24,14 +23,16 @@ export function useCanvasData(
         .single();
 
       if (data) {
-        setNodes((data.nodes as unknown as CanvasNode[]) || []);
-        setConnections((data.connections as unknown as Connection[]) || []);
+        loadData(
+          (data.nodes as unknown as CanvasNode[]) || [],
+          (data.connections as unknown as Connection[]) || [],
+        );
       }
       loaded.current = true;
     };
 
     load();
-  }, [canvasId, user, setNodes, setConnections]);
+  }, [canvasId, user, loadData]);
 
   // Reset loaded flag when canvasId changes
   useEffect(() => {
@@ -53,5 +54,5 @@ export function useCanvasData(
     }, 500);
   }, [canvasId, user]);
 
-  return { save, loaded: loaded.current };
+  return { save };
 }
