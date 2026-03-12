@@ -1004,6 +1004,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
         onUndo={undo}
         onRedo={redo}
       />
+      {canvasId && <SaveIndicator watchValue={[nodes, connections]} />}
     </div>
   );
 }
