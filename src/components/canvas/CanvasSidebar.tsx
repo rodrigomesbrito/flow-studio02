@@ -1,4 +1,4 @@
-import { Search, Clock, FolderOpen, FileEdit, Layers, GitBranch, Settings, HelpCircle, MessageCircle, Type, Image, TextCursorInput, CheckSquare } from 'lucide-react';
+import { Search, Clock, FolderOpen, FileEdit, Layers, GitBranch, Settings, HelpCircle, MessageCircle, Type, Image, TextCursorInput, CheckSquare, Frame } from 'lucide-react';
 import { NodeType } from '@/types/canvas';
 
 interface CanvasSidebarProps {
