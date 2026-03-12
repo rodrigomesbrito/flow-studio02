@@ -1,10 +1,11 @@
 import { useRef, useState, useCallback } from 'react';
-import { GripVertical, Upload } from 'lucide-react';
+import { GripVertical, Upload, Lock } from 'lucide-react';
 import { CanvasNode, Position } from '@/types/canvas';
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 
@@ -39,15 +40,19 @@ export function NodeCard({
 }: NodeCardProps) {
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const isLocked = node.locked ?? false;
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.port-handle') || (e.target as HTMLElement).closest('.resize-handle') || (e.target as HTMLElement).closest('textarea') || (e.target as HTMLElement).closest('input')) return;
     e.stopPropagation();
     onSelect(e);
-    onDragStart(node.id, { x: e.clientX, y: e.clientY }, e.altKey);
-  }, [node.id, onSelect, onDragStart]);
+    if (!isLocked) {
+      onDragStart(node.id, { x: e.clientX, y: e.clientY }, e.altKey);
+    }
+  }, [node.id, onSelect, onDragStart, isLocked]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    if (isLocked) return;
     e.stopPropagation();
     e.preventDefault();
     resizeRef.current = { startX: e.clientX, startY: e.clientY, startW: node.size.width, startH: node.size.height };
@@ -72,7 +77,7 @@ export function NodeCard({
 
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
-  }, [node.size, onUpdate, zoom]);
+  }, [node.size, onUpdate, zoom, isLocked]);
 
   const handlePortMouseDown = useCallback((e: React.MouseEvent, portId: string) => {
     e.stopPropagation();
@@ -81,6 +86,7 @@ export function NodeCard({
   }, [node.id, onPortDragStart]);
 
   const processImageFile = useCallback((file: File) => {
+    if (isLocked) return;
     const validTypes = ['image/png', 'image/jpg', 'image/jpeg', 'image/webp'];
     if (!validTypes.includes(file.type)) return;
     const reader = new FileReader();
@@ -88,7 +94,7 @@ export function NodeCard({
       onUpdate({ imageUrl: ev.target?.result as string });
     };
     reader.readAsDataURL(file);
-  }, [onUpdate]);
+  }, [onUpdate, isLocked]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -96,10 +102,11 @@ export function NodeCard({
   }, [processImageFile]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (isLocked) return;
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(true);
-  }, []);
+  }, [isLocked]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -111,9 +118,10 @@ export function NodeCard({
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
+    if (isLocked) return;
     const file = e.dataTransfer.files?.[0];
     if (file) processImageFile(file);
-  }, [processImageFile]);
+  }, [processImageFile, isLocked]);
 
   const getPortPosition = (side: string): React.CSSProperties => {
     switch (side) {
@@ -129,7 +137,7 @@ export function NodeCard({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
-          className={`node-card absolute select-none ${isSelected ? 'selected' : ''}`}
+          className={`node-card absolute select-none ${isSelected ? 'selected' : ''} ${isLocked ? 'locked' : ''}`}
           style={{
             left: node.position.x,
             top: node.position.y,
@@ -139,6 +147,13 @@ export function NodeCard({
           }}
           onMouseDown={handleMouseDown}
         >
+          {/* Lock indicator */}
+          {isLocked && (
+            <div className="absolute top-1 right-1 z-10">
+              <Lock size={12} className="text-muted-foreground/60" />
+            </div>
+          )}
+
           {node.ports.map((port) => {
             const isSource = activeSourceHandleId === port.id;
             const isHighlighted = highlightedTargetHandleId === port.id;
@@ -168,10 +183,11 @@ export function NodeCard({
 
           <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
             <div className="flex items-center gap-2">
-              <GripVertical size={14} className="text-muted-foreground cursor-grab" />
+              <GripVertical size={14} className={`text-muted-foreground ${isLocked ? 'cursor-not-allowed' : 'cursor-grab'}`} />
               <input
                 value={node.title}
-                onChange={(e) => onUpdate({ title: e.target.value })}
+                onChange={(e) => !isLocked && onUpdate({ title: e.target.value })}
+                readOnly={isLocked}
                 className="bg-transparent text-sm font-medium text-foreground outline-none w-full"
                 placeholder="Título"
               />
@@ -182,7 +198,8 @@ export function NodeCard({
             {node.type === 'text' && (
               <textarea
                 value={node.content}
-                onChange={(e) => onUpdate({ content: e.target.value })}
+                onChange={(e) => !isLocked && onUpdate({ content: e.target.value })}
+                readOnly={isLocked}
                 placeholder="Digite seu texto..."
                 className="w-full h-full bg-secondary/50 rounded-lg p-3 text-sm text-foreground resize-none outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground"
               />
@@ -197,32 +214,43 @@ export function NodeCard({
                 {node.imageUrl ? (
                   <img src={node.imageUrl} alt="Uploaded" className="w-full flex-1 object-cover rounded-lg" />
                 ) : (
-                  <label className={`flex-1 flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-                    isDragOver ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
+                  <label className={`flex-1 flex flex-col items-center justify-center border-2 border-dashed rounded-lg transition-colors ${
+                    isLocked ? 'cursor-not-allowed border-border' :
+                    isDragOver ? 'border-primary bg-primary/10 cursor-pointer' : 'border-border hover:border-primary/50 cursor-pointer'
                   }`}>
                     <Upload size={24} className="text-muted-foreground mb-2" />
                     <span className="text-sm text-muted-foreground">
                       {isDragOver ? 'Solte a imagem aqui' : 'Clique ou arraste uma imagem'}
                     </span>
                     <span className="text-xs text-muted-foreground/50 mt-1">PNG, JPG, WEBP</span>
-                    <input type="file" accept=".png,.jpg,.jpeg,.webp" onChange={handleImageUpload} className="hidden" />
+                    {!isLocked && <input type="file" accept=".png,.jpg,.jpeg,.webp" onChange={handleImageUpload} className="hidden" />}
                   </label>
                 )}
               </div>
             )}
           </div>
 
-          <div
-            className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-            onMouseDown={handleResizeStart}
-          >
-            <svg viewBox="0 0 16 16" className="w-full h-full text-muted-foreground/30">
-              <path d="M14 14L8 14L14 8Z" fill="currentColor" />
-            </svg>
-          </div>
+          {!isLocked && (
+            <div
+              className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+              onMouseDown={handleResizeStart}
+            >
+              <svg viewBox="0 0 16 16" className="w-full h-full text-muted-foreground/30">
+                <path d="M14 14L8 14L14 8Z" fill="currentColor" />
+              </svg>
+            </div>
+          )}
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-40 bg-card/95 backdrop-blur-xl border-border">
+        <ContextMenuItem
+          onClick={() => onUpdate({ locked: !isLocked })}
+          className="gap-2 text-foreground"
+        >
+          <Lock size={14} className="text-muted-foreground" />
+          {isLocked ? 'Desbloquear' : 'Bloquear'}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
         <ContextMenuItem onClick={onDelete} className="gap-2 text-destructive">
           Apagar
         </ContextMenuItem>

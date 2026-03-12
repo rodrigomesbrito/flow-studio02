@@ -36,6 +36,7 @@ export interface CanvasNode {
   imageUrl?: string;
   ports: Port[];
   textStyle?: TextStyle;
+  locked?: boolean;
 }
 
 export const CONNECTION_COLORS = [

@@ -1,11 +1,12 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { CanvasNode, Position } from '@/types/canvas';
-import { Plus, GripVertical } from 'lucide-react';
+import { Plus, GripVertical, Lock } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 
@@ -32,7 +33,9 @@ interface ChecklistNodeProps {
 function parseChecklist(content: string): ChecklistItem[] {
   if (!content) return [{ id: crypto.randomUUID(), text: '', checked: false }];
   try {
-    return JSON.parse(content);
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    return [{ id: crypto.randomUUID(), text: '', checked: false }];
   } catch {
     return [{ id: crypto.randomUUID(), text: '', checked: false }];
   }
@@ -53,12 +56,22 @@ export function ChecklistNode({
 }: ChecklistNodeProps) {
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
+  const firstInputRef = useRef<HTMLInputElement>(null);
+  const isLocked = node.locked ?? false;
 
   const items = parseChecklist(node.content);
 
+  // Auto-focus first input when node is first created (empty first item)
+  useEffect(() => {
+    if (items.length === 1 && items[0].text === '' && !node.content && firstInputRef.current) {
+      firstInputRef.current.focus();
+    }
+  }, []); // only on mount
+
   const updateItems = useCallback((newItems: ChecklistItem[]) => {
+    if (isLocked) return;
     onUpdate({ content: JSON.stringify(newItems) });
-  }, [onUpdate]);
+  }, [onUpdate, isLocked]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (
@@ -70,10 +83,13 @@ export function ChecklistNode({
     ) return;
     e.stopPropagation();
     onSelect(e);
-    onDragStart(node.id, { x: e.clientX, y: e.clientY }, e.altKey);
-  }, [node.id, onSelect, onDragStart]);
+    if (!isLocked) {
+      onDragStart(node.id, { x: e.clientX, y: e.clientY }, e.altKey);
+    }
+  }, [node.id, onSelect, onDragStart, isLocked]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    if (isLocked) return;
     e.stopPropagation();
     e.preventDefault();
     resizeRef.current = { startX: e.clientX, startY: e.clientY, startW: node.size.width, startH: node.size.height };
@@ -98,7 +114,7 @@ export function ChecklistNode({
 
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
-  }, [node.size, onUpdate, zoom]);
+  }, [node.size, onUpdate, zoom, isLocked]);
 
   const handlePortMouseDown = useCallback((e: React.MouseEvent, portId: string) => {
     e.stopPropagation();
@@ -107,23 +123,28 @@ export function ChecklistNode({
   }, [node.id, onPortDragStart]);
 
   const toggleItem = useCallback((id: string) => {
+    if (isLocked) return;
     updateItems(items.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
-  }, [items, updateItems]);
+  }, [items, updateItems, isLocked]);
 
   const updateItemText = useCallback((id: string, text: string) => {
+    if (isLocked) return;
     updateItems(items.map(item => item.id === id ? { ...item, text } : item));
-  }, [items, updateItems]);
+  }, [items, updateItems, isLocked]);
 
   const addItem = useCallback(() => {
+    if (isLocked) return;
     updateItems([...items, { id: crypto.randomUUID(), text: '', checked: false }]);
-  }, [items, updateItems]);
+  }, [items, updateItems, isLocked]);
 
   const removeItem = useCallback((id: string) => {
+    if (isLocked) return;
     if (items.length <= 1) return;
     updateItems(items.filter(item => item.id !== id));
-  }, [items, updateItems]);
+  }, [items, updateItems, isLocked]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent, itemId: string) => {
+    if (isLocked) return;
     if (e.key === 'Enter') {
       e.preventDefault();
       addItem();
@@ -132,7 +153,7 @@ export function ChecklistNode({
       e.preventDefault();
       removeItem(itemId);
     }
-  }, [addItem, removeItem, items]);
+  }, [addItem, removeItem, items, isLocked]);
 
   const completedCount = items.filter(i => i.checked).length;
 
@@ -150,7 +171,7 @@ export function ChecklistNode({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
-          className={`node-card absolute select-none ${isSelected ? 'selected' : ''}`}
+          className={`node-card absolute select-none ${isSelected ? 'selected' : ''} ${isLocked ? 'locked' : ''}`}
           style={{
             left: node.position.x,
             top: node.position.y,
@@ -160,6 +181,13 @@ export function ChecklistNode({
           }}
           onMouseDown={handleMouseDown}
         >
+          {/* Lock indicator */}
+          {isLocked && (
+            <div className="absolute top-1 right-1 z-10">
+              <Lock size={12} className="text-muted-foreground/60" />
+            </div>
+          )}
+
           {/* Connection ports */}
           {node.ports.map((port) => {
             const isSource = activeSourceHandleId === port.id;
@@ -191,8 +219,8 @@ export function ChecklistNode({
           {/* Header */}
           <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
             <div className="flex items-center gap-2 flex-1">
-              <GripVertical size={14} className="text-muted-foreground cursor-grab shrink-0" />
-              {editingTitle ? (
+              <GripVertical size={14} className={`text-muted-foreground shrink-0 ${isLocked ? 'cursor-not-allowed' : 'cursor-grab'}`} />
+              {editingTitle && !isLocked ? (
                 <input
                   autoFocus
                   value={node.title}
@@ -204,7 +232,7 @@ export function ChecklistNode({
               ) : (
                 <span
                   className="text-sm font-medium text-foreground cursor-text truncate"
-                  onDoubleClick={() => setEditingTitle(true)}
+                  onDoubleClick={() => !isLocked && setEditingTitle(true)}
                 >
                   {node.title || 'Checklist'}
                 </span>
@@ -217,18 +245,21 @@ export function ChecklistNode({
 
           {/* Items */}
           <div className="p-2 h-[calc(100%-42px)] overflow-y-auto space-y-0.5">
-            {items.map((item) => (
+            {items.map((item, index) => (
               <div key={item.id} className="flex items-center gap-2 group/item px-1 py-1 rounded hover:bg-secondary/40 transition-colors">
                 <Checkbox
                   checked={item.checked}
                   onCheckedChange={() => toggleItem(item.id)}
+                  disabled={isLocked}
                   className="shrink-0 border-muted-foreground/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                 />
                 <input
+                  ref={index === 0 ? firstInputRef : undefined}
                   value={item.text}
                   onChange={(e) => updateItemText(item.id, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(e, item.id)}
                   placeholder="Nova tarefa..."
+                  readOnly={isLocked}
                   className={`checklist-input flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/40 ${
                     item.checked ? 'line-through text-muted-foreground' : 'text-foreground'
                   }`}
@@ -236,27 +267,39 @@ export function ChecklistNode({
               </div>
             ))}
 
-            <button
-              onClick={addItem}
-              className="flex items-center gap-1.5 px-1 py-1 text-muted-foreground/60 hover:text-muted-foreground text-xs transition-colors w-full"
-            >
-              <Plus size={12} />
-              Adicionar item
-            </button>
+            {!isLocked && (
+              <button
+                onClick={addItem}
+                className="flex items-center gap-1.5 px-1 py-1 text-muted-foreground/60 hover:text-muted-foreground text-xs transition-colors w-full"
+              >
+                <Plus size={12} />
+                Adicionar item
+              </button>
+            )}
           </div>
 
           {/* Resize handle */}
-          <div
-            className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-            onMouseDown={handleResizeStart}
-          >
-            <svg viewBox="0 0 16 16" className="w-full h-full text-muted-foreground/30">
-              <path d="M14 14L8 14L14 8Z" fill="currentColor" />
-            </svg>
-          </div>
+          {!isLocked && (
+            <div
+              className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+              onMouseDown={handleResizeStart}
+            >
+              <svg viewBox="0 0 16 16" className="w-full h-full text-muted-foreground/30">
+                <path d="M14 14L8 14L14 8Z" fill="currentColor" />
+              </svg>
+            </div>
+          )}
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-40 bg-card/95 backdrop-blur-xl border-border">
+        <ContextMenuItem
+          onClick={() => onUpdate({ locked: !isLocked })}
+          className="gap-2 text-foreground"
+        >
+          <Lock size={14} className="text-muted-foreground" />
+          {isLocked ? 'Desbloquear' : 'Bloquear'}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
         <ContextMenuItem onClick={onDelete} className="gap-2 text-destructive">
           Apagar
         </ContextMenuItem>
