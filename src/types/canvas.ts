@@ -23,6 +23,7 @@ export interface TextStyle {
   bold: boolean;
   italic: boolean;
   uppercase: boolean;
+  textAlign?: 'left' | 'center' | 'right';
 }
 
 export interface CanvasNode {

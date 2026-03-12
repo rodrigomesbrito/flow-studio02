@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { CanvasNode, Position, TextStyle } from '@/types/canvas';
-import { Trash2, Bold, Italic, CaseSensitive, Plus, Minus } from 'lucide-react';
+import { Trash2, Bold, Italic, CaseSensitive, Plus, Minus, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 
 interface FreeTextNodeProps {
   node: CanvasNode;
@@ -19,6 +19,7 @@ const DEFAULT_TEXT_STYLE: TextStyle = {
   bold: false,
   italic: false,
   uppercase: false,
+  textAlign: 'center',
 };
 
 export function FreeTextNode({
@@ -99,6 +100,7 @@ export function FreeTextNode({
     fontWeight: style.bold ? 700 : 400,
     fontStyle: style.italic ? 'italic' : 'normal',
     textTransform: style.uppercase ? 'uppercase' : 'none',
+    textAlign: style.textAlign || 'center',
   };
 
   const displayContent = node.content || '';
@@ -147,6 +149,37 @@ export function FreeTextNode({
             title="Aumentar texto"
           >
             <Plus size={12} />
+          </button>
+
+          <div className="w-px h-4 bg-border mx-0.5" />
+
+          {/* Alignment */}
+          <button
+            onClick={() => updateStyle({ textAlign: 'left' })}
+            className={`w-6 h-6 flex items-center justify-center rounded transition-colors ${
+              style.textAlign === 'left' ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+            }`}
+            title="Alinhar à esquerda"
+          >
+            <AlignLeft size={13} />
+          </button>
+          <button
+            onClick={() => updateStyle({ textAlign: 'center' })}
+            className={`w-6 h-6 flex items-center justify-center rounded transition-colors ${
+              (style.textAlign || 'center') === 'center' ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+            }`}
+            title="Centralizar"
+          >
+            <AlignCenter size={13} />
+          </button>
+          <button
+            onClick={() => updateStyle({ textAlign: 'right' })}
+            className={`w-6 h-6 flex items-center justify-center rounded transition-colors ${
+              style.textAlign === 'right' ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+            }`}
+            title="Alinhar à direita"
+          >
+            <AlignRight size={13} />
           </button>
 
           <div className="w-px h-4 bg-border mx-0.5" />
