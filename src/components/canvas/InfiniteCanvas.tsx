@@ -5,6 +5,7 @@ import { BottomToolbar } from './BottomToolbar';
 import { NodeCard } from './NodeCard';
 import { FreeTextNode } from './FreeTextNode';
 import { ChecklistNode } from './ChecklistNode';
+import { FrameNode } from './FrameNode';
 import { ConnectionLines } from './ConnectionLines';
 import { Position, CanvasTool, NodeType } from '@/types/canvas';
 import { DEFAULT_EDGE_COLOR } from './connection-utils';
@@ -13,9 +14,10 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { Type, Image, CheckSquare } from 'lucide-react';
+import { Type, Image, CheckSquare, Frame } from 'lucide-react';
 
 interface SelectionBox {
   startX: number;
