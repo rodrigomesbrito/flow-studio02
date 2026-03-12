@@ -10,7 +10,6 @@ import { ConnectionLines } from './ConnectionLines';
 import { Position, CanvasTool, NodeType, CanvasNode, Connection } from '@/types/canvas';
 import { DEFAULT_EDGE_COLOR } from './connection-utils';
 import { useCanvasData } from '@/hooks/useCanvasData';
-import { SaveIndicator } from './SaveIndicator';
 import { getHandleWorldPosition, findClosestCompatibleHandle, HANDLE_HIT_RADIUS } from './connection-utils';
 import {
   ContextMenu,
