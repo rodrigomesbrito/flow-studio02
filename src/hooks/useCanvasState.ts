@@ -29,7 +29,7 @@ const NO_PORTS_TYPES: NodeType[] = ['freetext', 'frame'];
 
 const createNode = (type: NodeType, position: Position): CanvasNode => {
   const defaults = getNodeDefaults(type);
-  return {
+  const node: CanvasNode = {
     id: crypto.randomUUID(),
     type,
     position,
@@ -38,6 +38,10 @@ const createNode = (type: NodeType, position: Position): CanvasNode => {
     content: '',
     ports: NO_PORTS_TYPES.includes(type) ? [] : createDefaultPorts(),
   };
+  if (type === 'freetext') {
+    node.textStyle = { fontSize: 16, bold: false, italic: false, uppercase: false, textAlign: 'center' };
+  }
+  return node;
 };
 
 const cloneState = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
