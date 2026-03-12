@@ -16,10 +16,14 @@ const getNodeDefaults = (type: NodeType) => {
       return { width: 280, height: 300, title: 'Image' };
     case 'checklist':
       return { width: 280, height: 220, title: 'Checklist' };
+    case 'frame':
+      return { width: 500, height: 400, title: 'Frame' };
     default:
       return { width: 320, height: 180, title: 'Text' };
   }
 };
+
+const NO_PORTS_TYPES: NodeType[] = ['freetext', 'checklist', 'frame'];
 
 const createNode = (type: NodeType, position: Position): CanvasNode => {
   const defaults = getNodeDefaults(type);
@@ -30,7 +34,7 @@ const createNode = (type: NodeType, position: Position): CanvasNode => {
     size: { width: defaults.width, height: defaults.height },
     title: defaults.title,
     content: '',
-    ports: (type === 'freetext' || type === 'checklist') ? [] : createDefaultPorts(),
+    ports: NO_PORTS_TYPES.includes(type) ? [] : createDefaultPorts(),
   };
 };
 
@@ -120,7 +124,7 @@ export function useCanvasState() {
       ...cloneState(node),
       id: crypto.randomUUID(),
       position: { x: node.position.x + 40, y: node.position.y + 40 },
-      ports: (node.type === 'freetext' || node.type === 'checklist') ? [] : createDefaultPorts(),
+      ports: NO_PORTS_TYPES.includes(node.type) ? [] : createDefaultPorts(),
     };
 
     setNodes((prevNodes) => {
@@ -145,7 +149,7 @@ export function useCanvasState() {
         ...cloneState(node),
         id: newId,
         position: { x: node.position.x + offsetDelta.x, y: node.position.y + offsetDelta.y },
-        ports: (node.type === 'freetext' || node.type === 'checklist') ? [] : createDefaultPorts(),
+        ports: NO_PORTS_TYPES.includes(node.type) ? [] : createDefaultPorts(),
       };
     });
 
@@ -202,7 +206,7 @@ export function useCanvasState() {
     const newNodes: CanvasNode[] = clipNodes.map((node) => {
       const newId = crypto.randomUUID();
       idMap.set(node.id, newId);
-      const newPorts = (node.type === 'freetext' || node.type === 'checklist') ? [] : createDefaultPorts();
+      const newPorts = NO_PORTS_TYPES.includes(node.type) ? [] : createDefaultPorts();
       // Map old port ids to new ones
       node.ports.forEach((oldPort, i) => {
         if (newPorts[i]) portMap.set(oldPort.id, newPorts[i].id);
