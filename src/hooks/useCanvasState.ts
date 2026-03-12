@@ -16,10 +16,14 @@ const getNodeDefaults = (type: NodeType) => {
       return { width: 280, height: 300, title: 'Image' };
     case 'checklist':
       return { width: 280, height: 220, title: 'Checklist' };
+    case 'frame':
+      return { width: 500, height: 400, title: 'Frame' };
     default:
       return { width: 320, height: 180, title: 'Text' };
   }
 };
+
+const NO_PORTS_TYPES: NodeType[] = ['freetext', 'checklist', 'frame'];
 
 const createNode = (type: NodeType, position: Position): CanvasNode => {
   const defaults = getNodeDefaults(type);
