@@ -57,6 +57,17 @@ export function WorkspaceSidebar({ onCreateNew }: WorkspaceSidebarProps) {
       </nav>
 
       <div className="flex-1" />
+
+      {/* Logout */}
+      <div className="px-3 pb-4">
+        <button
+          onClick={() => signOut().then(() => navigate('/login'))}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+        >
+          <LogOut size={16} />
+          <span>Sair</span>
+        </button>
+      </div>
     </aside>
   );
 }
