@@ -56,9 +56,8 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
     }
   };
 
-  const startRename = (item: WorkspaceItem, e?: Event) => {
-    e?.preventDefault();
-    e?.stopPropagation();
+  const startRename = (item: WorkspaceItem) => {
+    renamingRef.current = item.id;
     setRenamingId(item.id);
     setRenameValue(item.name);
   };
