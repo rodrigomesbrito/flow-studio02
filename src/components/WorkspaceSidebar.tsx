@@ -9,6 +9,7 @@ interface WorkspaceSidebarProps {
 export function WorkspaceSidebar({ onCreateNew }: WorkspaceSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { signOut } = useAuth();
   const isFilesRoute = location.pathname === '/' || location.pathname.startsWith('/project/');
 
   return (
