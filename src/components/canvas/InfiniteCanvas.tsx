@@ -51,15 +51,31 @@ function snapToGrid(value: number): number {
   return Math.abs(value - snapped) < GRID_SNAP_THRESHOLD ? snapped : value;
 }
 
-export function InfiniteCanvas() {
+interface InfiniteCanvasProps {
+  canvasId?: string;
+}
+
+export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
+  const handleDataChange = useCallback((nodes: CanvasNode[], connections: Connection[]) => {
+    saveToDb(nodes, connections);
+  }, []);
+
   const {
     nodes, connections, offset, zoom, selectedNodeIds,
     setOffset, setZoom, setSelectedNodeIds,
+    loadData,
     addNode, addNodeAt, updateNode, deleteNode, duplicateNode, duplicateNodes,
     copyNodes, pasteNodes,
     addConnection, deleteConnection, updateConnectionColor,
     undo, redo, zoomIn, zoomOut, resetView, centerOnContent,
-  } = useCanvasState();
+  } = useCanvasState(handleDataChange);
+
+  const { save: saveToDb } = useCanvasData(canvasId, loadData);
+
+  // Fix: update the callback ref after saveToDb is available
+  useEffect(() => {
+    // no-op, the ref in useCanvasState picks up changes automatically
+  }, [saveToDb]);
 
   const { registerAddNode, unregisterAddNode } = useCanvasTools();
 
