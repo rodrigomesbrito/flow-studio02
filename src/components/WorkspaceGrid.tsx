@@ -263,7 +263,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
                           onBlur={commitRename}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') commitRename();
-                            if (e.key === 'Escape') setRenamingId(null);
+                            if (e.key === 'Escape') { renamingRef.current = null; setRenamingId(null); }
                           }}
                           onClick={(e) => e.stopPropagation()}
                           className="w-full bg-transparent text-sm text-foreground font-medium outline-none border-b border-primary pb-0.5"
