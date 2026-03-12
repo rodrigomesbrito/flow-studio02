@@ -25,7 +25,7 @@ const getNodeDefaults = (type: NodeType) => {
   }
 };
 
-const NO_PORTS_TYPES: NodeType[] = ['freetext', 'checklist', 'frame'];
+const NO_PORTS_TYPES: NodeType[] = ['freetext', 'frame'];
 
 const createNode = (type: NodeType, position: Position): CanvasNode => {
   const defaults = getNodeDefaults(type);

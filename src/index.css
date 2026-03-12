@@ -94,11 +94,19 @@
   border-radius: 9999px;
   background: hsl(var(--card));
   cursor: crosshair;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, opacity 0.18s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
+  opacity: 0;
+}
+
+.node-card:hover .port-handle,
+.port-handle.is-source,
+.port-handle.is-highlighted,
+.port-handle.is-connected {
+  opacity: 1;
 }
 
 .port-handle::after {

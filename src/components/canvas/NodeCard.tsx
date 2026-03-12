@@ -1,6 +1,12 @@
 import { useRef, useState, useCallback } from 'react';
-import { MoreHorizontal, Copy, Trash2, GripVertical, Upload } from 'lucide-react';
+import { GripVertical, Upload } from 'lucide-react';
 import { CanvasNode, Position } from '@/types/canvas';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 
 interface NodeCardProps {
   node: CanvasNode;
@@ -31,8 +37,8 @@ export function NodeCard({
   onDragStart,
   onPortDragStart,
 }: NodeCardProps) {
-  const [showMenu, setShowMenu] = useState(false);
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.port-handle') || (e.target as HTMLElement).closest('.resize-handle') || (e.target as HTMLElement).closest('textarea') || (e.target as HTMLElement).closest('input')) return;
@@ -74,15 +80,40 @@ export function NodeCard({
     onPortDragStart(node.id, portId);
   }, [node.id, onPortDragStart]);
 
-  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processImageFile = useCallback((file: File) => {
+    const validTypes = ['image/png', 'image/jpg', 'image/jpeg', 'image/webp'];
+    if (!validTypes.includes(file.type)) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       onUpdate({ imageUrl: ev.target?.result as string });
     };
     reader.readAsDataURL(file);
   }, [onUpdate]);
+
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processImageFile(file);
+  }, [processImageFile]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processImageFile(file);
+  }, [processImageFile]);
 
   const getPortPosition = (side: string): React.CSSProperties => {
     switch (side) {
@@ -95,106 +126,107 @@ export function NodeCard({
   };
 
   return (
-    <div
-      className={`node-card absolute select-none ${isSelected ? 'selected' : ''}`}
-      style={{
-        left: node.position.x,
-        top: node.position.y,
-        width: node.size.width,
-        height: node.size.height,
-        zIndex: isSelected ? 100 : 10,
-      }}
-      onMouseDown={handleMouseDown}
-    >
-      {node.ports.map((port) => {
-        const isSource = activeSourceHandleId === port.id;
-        const isHighlighted = highlightedTargetHandleId === port.id;
-        const connColor = portColors.get(port.id);
-        const isConnected = !!connColor;
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          className={`node-card absolute select-none ${isSelected ? 'selected' : ''}`}
+          style={{
+            left: node.position.x,
+            top: node.position.y,
+            width: node.size.width,
+            height: node.size.height,
+            zIndex: isSelected ? 100 : 10,
+          }}
+          onMouseDown={handleMouseDown}
+        >
+          {node.ports.map((port) => {
+            const isSource = activeSourceHandleId === port.id;
+            const isHighlighted = highlightedTargetHandleId === port.id;
+            const connColor = portColors.get(port.id);
+            const isConnected = !!connColor;
 
-        return (
-          <button
-            key={port.id}
-            type="button"
-            aria-label={`${port.type === 'input' ? 'Entrada' : 'Saída'} do node ${node.title}`}
-            className={[
-              'port-handle absolute',
-              port.type === 'input' ? 'port-input' : 'port-output',
-              isSource ? 'is-source' : '',
-              isHighlighted ? 'is-highlighted' : '',
-              isConnected ? 'is-connected' : '',
-            ].filter(Boolean).join(' ')}
-            style={{
-              ...getPortPosition(port.side),
-              ...(connColor ? { '--port-dynamic-color': connColor } as React.CSSProperties : {}),
-            }}
-            onMouseDown={(e) => handlePortMouseDown(e, port.id)}
-          />
-        );
-      })}
+            return (
+              <button
+                key={port.id}
+                type="button"
+                aria-label={`${port.type === 'input' ? 'Entrada' : 'Saída'} do node ${node.title}`}
+                className={[
+                  'port-handle absolute',
+                  port.type === 'input' ? 'port-input' : 'port-output',
+                  isSource ? 'is-source' : '',
+                  isHighlighted ? 'is-highlighted' : '',
+                  isConnected ? 'is-connected' : '',
+                ].filter(Boolean).join(' ')}
+                style={{
+                  ...getPortPosition(port.side),
+                  ...(connColor ? { '--port-dynamic-color': connColor } as React.CSSProperties : {}),
+                }}
+                onMouseDown={(e) => handlePortMouseDown(e, port.id)}
+              />
+            );
+          })}
 
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
-        <div className="flex items-center gap-2">
-          <GripVertical size={14} className="text-muted-foreground cursor-grab" />
-          <input
-            value={node.title}
-            onChange={(e) => onUpdate({ title: e.target.value })}
-            className="bg-transparent text-sm font-medium text-foreground outline-none w-full"
-            placeholder="Título"
-          />
-        </div>
-        <div className="relative">
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-            className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-          >
-            <MoreHorizontal size={14} />
-          </button>
-          {showMenu && (
-            <div className="absolute right-0 top-8 bg-card border border-border rounded-lg shadow-xl py-1 min-w-[140px] z-50">
-              <button onClick={() => { onDuplicate(); setShowMenu(false); }} className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-secondary flex items-center gap-2">
-                <Copy size={14} /> Duplicar
-              </button>
-              <button onClick={() => { onDelete(); setShowMenu(false); }} className="w-full px-3 py-2 text-left text-sm text-destructive hover:bg-secondary flex items-center gap-2">
-                <Trash2 size={14} /> Deletar
-              </button>
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
+            <div className="flex items-center gap-2">
+              <GripVertical size={14} className="text-muted-foreground cursor-grab" />
+              <input
+                value={node.title}
+                onChange={(e) => onUpdate({ title: e.target.value })}
+                className="bg-transparent text-sm font-medium text-foreground outline-none w-full"
+                placeholder="Título"
+              />
             </div>
-          )}
-        </div>
-      </div>
+          </div>
 
-      <div className="p-3 h-[calc(100%-42px)] overflow-hidden">
-        {node.type === 'text' && (
-          <textarea
-            value={node.content}
-            onChange={(e) => onUpdate({ content: e.target.value })}
-            placeholder="Digite seu texto..."
-            className="w-full h-full bg-secondary/50 rounded-lg p-3 text-sm text-foreground resize-none outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground"
-          />
-        )}
-        {node.type === 'image' && (
-          <div className="h-full flex flex-col">
-            {node.imageUrl ? (
-              <img src={node.imageUrl} alt="Uploaded" className="w-full flex-1 object-cover rounded-lg" />
-            ) : (
-              <label className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
-                <Upload size={24} className="text-muted-foreground mb-2" />
-                <span className="text-sm text-muted-foreground">Upload imagem</span>
-                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-              </label>
+          <div className="p-3 h-[calc(100%-42px)] overflow-hidden">
+            {node.type === 'text' && (
+              <textarea
+                value={node.content}
+                onChange={(e) => onUpdate({ content: e.target.value })}
+                placeholder="Digite seu texto..."
+                className="w-full h-full bg-secondary/50 rounded-lg p-3 text-sm text-foreground resize-none outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground"
+              />
+            )}
+            {node.type === 'image' && (
+              <div
+                className="h-full flex flex-col"
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                {node.imageUrl ? (
+                  <img src={node.imageUrl} alt="Uploaded" className="w-full flex-1 object-cover rounded-lg" />
+                ) : (
+                  <label className={`flex-1 flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                    isDragOver ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
+                  }`}>
+                    <Upload size={24} className="text-muted-foreground mb-2" />
+                    <span className="text-sm text-muted-foreground">
+                      {isDragOver ? 'Solte a imagem aqui' : 'Clique ou arraste uma imagem'}
+                    </span>
+                    <span className="text-xs text-muted-foreground/50 mt-1">PNG, JPG, WEBP</span>
+                    <input type="file" accept=".png,.jpg,.jpeg,.webp" onChange={handleImageUpload} className="hidden" />
+                  </label>
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
 
-      <div
-        className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-        onMouseDown={handleResizeStart}
-      >
-        <svg viewBox="0 0 16 16" className="w-full h-full text-muted-foreground/30">
-          <path d="M14 14L8 14L14 8Z" fill="currentColor" />
-        </svg>
-      </div>
-    </div>
+          <div
+            className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+            onMouseDown={handleResizeStart}
+          >
+            <svg viewBox="0 0 16 16" className="w-full h-full text-muted-foreground/30">
+              <path d="M14 14L8 14L14 8Z" fill="currentColor" />
+            </svg>
+          </div>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-40 bg-card/95 backdrop-blur-xl border-border">
+        <ContextMenuItem onClick={onDelete} className="gap-2 text-destructive">
+          Apagar
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
