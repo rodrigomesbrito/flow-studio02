@@ -66,6 +66,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
     if (renamingId && renameValue.trim()) {
       renameItem(renamingId, renameValue.trim());
     }
+    renamingRef.current = null;
     setRenamingId(null);
   };
 
