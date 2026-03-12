@@ -48,13 +48,13 @@ function AppLayout() {
   const projectMatch = location.pathname.match(/^\/project\/(.+)/);
   const currentParentId = projectMatch ? projectMatch[1] : null;
 
-  const handleCreateCanvas = useCallback(() => {
-    const item = createItem('canvas', currentParentId);
+  const handleCreateCanvas = useCallback(async () => {
+    const item = await createItem('canvas', currentParentId);
     navigate(`/canvas/${item.id}`);
   }, [createItem, currentParentId, navigate]);
 
-  const handleCreateProject = useCallback(() => {
-    createItem('project', currentParentId);
+  const handleCreateProject = useCallback(async () => {
+    await createItem('project', currentParentId);
   }, [createItem, currentParentId]);
 
   if (isCanvasRoute) {

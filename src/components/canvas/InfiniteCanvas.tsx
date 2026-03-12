@@ -7,8 +7,10 @@ import { FreeTextNode } from './FreeTextNode';
 import { ChecklistNode } from './ChecklistNode';
 import { FrameNode } from './FrameNode';
 import { ConnectionLines } from './ConnectionLines';
-import { Position, CanvasTool, NodeType } from '@/types/canvas';
+import { Position, CanvasTool, NodeType, CanvasNode, Connection } from '@/types/canvas';
 import { DEFAULT_EDGE_COLOR } from './connection-utils';
+import { useCanvasData } from '@/hooks/useCanvasData';
+import { SaveIndicator } from './SaveIndicator';
 import { getHandleWorldPosition, findClosestCompatibleHandle, HANDLE_HIT_RADIUS } from './connection-utils';
 import {
   ContextMenu,
@@ -49,15 +51,29 @@ function snapToGrid(value: number): number {
   return Math.abs(value - snapped) < GRID_SNAP_THRESHOLD ? snapped : value;
 }
 
-export function InfiniteCanvas() {
+interface InfiniteCanvasProps {
+  canvasId?: string;
+}
+
+export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
+  const saveRef = useRef<(nodes: CanvasNode[], connections: Connection[]) => void>(() => {});
+
+  const handleDataChange = useCallback((nodes: CanvasNode[], connections: Connection[]) => {
+    saveRef.current(nodes, connections);
+  }, []);
+
   const {
     nodes, connections, offset, zoom, selectedNodeIds,
     setOffset, setZoom, setSelectedNodeIds,
+    loadData,
     addNode, addNodeAt, updateNode, deleteNode, duplicateNode, duplicateNodes,
     copyNodes, pasteNodes,
     addConnection, deleteConnection, updateConnectionColor,
     undo, redo, zoomIn, zoomOut, resetView, centerOnContent,
-  } = useCanvasState();
+  } = useCanvasState(handleDataChange);
+
+  const { save: saveToDb } = useCanvasData(canvasId, loadData);
+  saveRef.current = saveToDb;
 
   const { registerAddNode, unregisterAddNode } = useCanvasTools();
 
@@ -988,6 +1004,7 @@ export function InfiniteCanvas() {
         onUndo={undo}
         onRedo={redo}
       />
+      {canvasId && <SaveIndicator watchValue={[nodes, connections]} />}
     </div>
   );
 }
