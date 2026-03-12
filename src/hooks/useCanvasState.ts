@@ -120,7 +120,7 @@ export function useCanvasState() {
       ...cloneState(node),
       id: crypto.randomUUID(),
       position: { x: node.position.x + 40, y: node.position.y + 40 },
-      ports: node.type === 'freetext' ? [] : createDefaultPorts(),
+      ports: (node.type === 'freetext' || node.type === 'checklist') ? [] : createDefaultPorts(),
     };
 
     setNodes((prevNodes) => {
