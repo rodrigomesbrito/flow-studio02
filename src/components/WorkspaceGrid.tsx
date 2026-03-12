@@ -94,7 +94,7 @@ export function WorkspaceGrid({ items, title, breadcrumbs }: WorkspaceGridProps)
       <DropdownMenuItem onClick={() => window.open(`${window.location.origin}/${item.type === 'project' ? 'project' : 'canvas'}/${item.id}`, '_blank')}>
         <ExternalLink size={14} className="mr-2" /> Open in a new tab
       </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => startRename(item)}>
+      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); startRename(item); }}>
         <Pencil size={14} className="mr-2" /> Rename
       </DropdownMenuItem>
       <DropdownMenuItem onClick={() => deleteItem(item.id)} className="text-destructive">
