@@ -8,6 +8,7 @@ import { ChecklistNode } from './ChecklistNode';
 import { FrameNode } from './FrameNode';
 import { ConnectionLines } from './ConnectionLines';
 import { Position, CanvasTool, NodeType, CanvasNode, Connection } from '@/types/canvas';
+import { AlignmentToolbar } from './AlignmentToolbar';
 import { DEFAULT_EDGE_COLOR } from './connection-utils';
 import { useCanvasData } from '@/hooks/useCanvasData';
 import { getHandleWorldPosition, findClosestCompatibleHandle, HANDLE_HIT_RADIUS } from './connection-utils';
@@ -1294,7 +1295,14 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
         onUndo={undo}
         onRedo={redo}
       />
-      
+
+      <AlignmentToolbar
+        selectedNodeIds={selectedNodeIds}
+        nodes={nodes}
+        offset={offset}
+        zoom={zoom}
+        onUpdateNode={updateNode}
+      />
     </div>
   );
 }
