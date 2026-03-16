@@ -465,7 +465,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
         const rawY = primaryStart.y + dy;
         const draggedIds = new Set(nodeStartPositions.current.keys());
 
-        const { snappedX, snappedY, guides } = computeSnapAndGuides(draggingNodeId, rawX, rawY, draggedIds);
+        const { snappedX, snappedY, guides, distances } = computeSnapAndGuides(draggingNodeId, rawX, rawY, draggedIds);
         const snapDx = snappedX - primaryStart.x;
         const snapDy = snappedY - primaryStart.y;
 
