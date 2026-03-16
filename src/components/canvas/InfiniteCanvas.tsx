@@ -353,9 +353,177 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
       }
     }
 
+    // ---- Equal spacing snap ----
+    // Check if dragged node sits between two static nodes in a row/column
+    // and snap to make gaps equal.
+    const EQUAL_SPACING_THRESHOLD = 8;
+
+    // Horizontal equal spacing: find pairs of static nodes where dragged is between them horizontally
+    // with vertical overlap
+    for (let i = 0; i < otherNodes.length; i++) {
+      for (let j = i + 1; j < otherNodes.length; j++) {
+        const a = otherNodes[i];
+        const b = otherNodes[j];
+
+        const aLeft = a.position.x; const aRight = a.position.x + a.size.width;
+        const bLeft = b.position.x; const bRight = b.position.x + b.size.width;
+        const aTop = a.position.y; const aBottom = a.position.y + a.size.height;
+        const bTop = b.position.y; const bBottom = b.position.y + b.size.height;
+
+        // Check vertical overlap among all three
+        const allTop = Math.max(finalTop, aTop, bTop);
+        const allBottom = Math.min(finalBottom, aBottom, bBottom);
+        if (allBottom - allTop <= 0) continue;
+
+        // Determine left-to-right order: leftNode, middle(dragged), rightNode
+        const leftNode = aRight < bLeft ? { left: aLeft, right: aRight, top: aTop, bottom: aBottom } :
+                         bRight < aLeft ? { left: bLeft, right: bRight, top: bTop, bottom: bBottom } : null;
+        const rightNode = aRight < bLeft ? { left: bLeft, right: bRight, top: bTop, bottom: bBottom } :
+                          bRight < aLeft ? { left: aLeft, right: aRight, top: aTop, bottom: aBottom } : null;
+
+        if (!leftNode || !rightNode) continue;
+
+        // Dragged should be between them
+        if (finalLeft < leftNode.right || finalRight > rightNode.left) continue;
+
+        // Equal gap position: gap = (rightNode.left - leftNode.right - w) / 2
+        const totalSpace = rightNode.left - leftNode.right;
+        if (totalSpace < w) continue;
+        const equalGap = (totalSpace - w) / 2;
+        const equalX = leftNode.right + equalGap;
+        const diff = Math.abs(snapX - equalX);
+        if (diff < EQUAL_SPACING_THRESHOLD && diff < Math.abs(bestDx)) {
+          snapX = equalX;
+        }
+      }
+    }
+
+    // Vertical equal spacing
+    for (let i = 0; i < otherNodes.length; i++) {
+      for (let j = i + 1; j < otherNodes.length; j++) {
+        const a = otherNodes[i];
+        const b = otherNodes[j];
+
+        const aLeft = a.position.x; const aRight = a.position.x + a.size.width;
+        const bLeft = b.position.x; const bRight = b.position.x + b.size.width;
+        const aTop = a.position.y; const aBottom = a.position.y + a.size.height;
+        const bTop = b.position.y; const bBottom = b.position.y + b.size.height;
+
+        const allLeft = Math.max(finalLeft, aLeft, bLeft);
+        const allRight = Math.min(finalRight, aRight, bRight);
+        if (allRight - allLeft <= 0) continue;
+
+        const topNode = aBottom < bTop ? { left: aLeft, right: aRight, top: aTop, bottom: aBottom } :
+                        bBottom < aTop ? { left: bLeft, right: bRight, top: bTop, bottom: bBottom } : null;
+        const bottomNode = aBottom < bTop ? { left: bLeft, right: bRight, top: bTop, bottom: bBottom } :
+                           bBottom < aTop ? { left: aLeft, right: aRight, top: aTop, bottom: aBottom } : null;
+
+        if (!topNode || !bottomNode) continue;
+        if (finalTop < topNode.bottom || finalBottom > bottomNode.top) continue;
+
+        const totalSpace = bottomNode.top - topNode.bottom;
+        if (totalSpace < h) continue;
+        const equalGap = (totalSpace - h) / 2;
+        const equalY = topNode.bottom + equalGap;
+        const diff = Math.abs(snapY - equalY);
+        if (diff < EQUAL_SPACING_THRESHOLD && diff < Math.abs(bestDy)) {
+          snapY = equalY;
+        }
+      }
+    }
+
+    // Also check equal spacing with adjacent pairs (A-B gap == B-dragged gap or dragged-B gap == B-C gap)
+    // Sort static nodes by X for horizontal chain detection
+    const sortedByX = [...otherNodes].sort((a, b) => a.position.x - b.position.x);
+    for (const other of sortedByX) {
+      const oLeft = other.position.x;
+      const oRight = other.position.x + other.size.width;
+      const oTop = other.position.y;
+      const oBottom = other.position.y + other.size.height;
+
+      // Vertical overlap with dragged?
+      if (Math.min(finalBottom, oBottom) - Math.max(finalTop, oTop) <= 0) continue;
+
+      // Dragged is to the right of other: gap = snapX - oRight
+      if (snapX > oRight) {
+        const gapRight = snapX - oRight;
+        // Find another static node to the left of 'other' with similar gap
+        for (const prev of sortedByX) {
+          if (prev === other) continue;
+          const pRight = prev.position.x + prev.size.width;
+          if (pRight > oLeft) continue;
+          if (Math.min(oBottom, prev.position.y + prev.size.height) - Math.max(oTop, prev.position.y) <= 0) continue;
+          const prevGap = oLeft - pRight;
+          if (Math.abs(gapRight - prevGap) < EQUAL_SPACING_THRESHOLD) {
+            snapX = oRight + prevGap;
+          }
+        }
+      }
+
+      // Dragged is to the left of other: gap = oLeft - (snapX + w)
+      if (snapX + w < oLeft) {
+        const gapLeft = oLeft - (snapX + w);
+        for (const next of sortedByX) {
+          if (next === other) continue;
+          const nLeft = next.position.x;
+          if (nLeft < oRight) continue;
+          if (Math.min(oBottom, next.position.y + next.size.height) - Math.max(oTop, next.position.y) <= 0) continue;
+          const nextGap = nLeft - oRight;
+          if (Math.abs(gapLeft - nextGap) < EQUAL_SPACING_THRESHOLD) {
+            snapX = oLeft - nextGap - w;
+          }
+        }
+      }
+    }
+
+    // Same for vertical chains
+    const sortedByY = [...otherNodes].sort((a, b) => a.position.y - b.position.y);
+    for (const other of sortedByY) {
+      const oLeft = other.position.x;
+      const oRight = other.position.x + other.size.width;
+      const oTop = other.position.y;
+      const oBottom = other.position.y + other.size.height;
+
+      if (Math.min(finalRight, oRight) - Math.max(finalLeft, oLeft) <= 0) continue;
+
+      if (snapY > oBottom) {
+        const gapBelow = snapY - oBottom;
+        for (const prev of sortedByY) {
+          if (prev === other) continue;
+          const pBottom = prev.position.y + prev.size.height;
+          if (pBottom > oTop) continue;
+          if (Math.min(oRight, prev.position.x + prev.size.width) - Math.max(oLeft, prev.position.x) <= 0) continue;
+          const prevGap = oTop - pBottom;
+          if (Math.abs(gapBelow - prevGap) < EQUAL_SPACING_THRESHOLD) {
+            snapY = oBottom + prevGap;
+          }
+        }
+      }
+
+      if (snapY + h < oTop) {
+        const gapAbove = oTop - (snapY + h);
+        for (const next of sortedByY) {
+          if (next === other) continue;
+          const nTop = next.position.y;
+          if (nTop < oBottom) continue;
+          if (Math.min(oRight, next.position.x + next.size.width) - Math.max(oLeft, next.position.x) <= 0) continue;
+          const nextGap = nTop - oBottom;
+          if (Math.abs(gapAbove - nextGap) < EQUAL_SPACING_THRESHOLD) {
+            snapY = oTop - nextGap - h;
+          }
+        }
+      }
+    }
+
+    // Recompute final positions after equal-spacing snap
+    const esFinalLeft = snapX;
+    const esFinalRight = snapX + w;
+    const esFinalTop = snapY;
+    const esFinalBottom = snapY + h;
+
     // Compute distance indicators to nearest neighbors
     const distances: DistanceIndicator[] = [];
-    const DISTANCE_THRESHOLD = 200; // only show distances within this range
+    const DISTANCE_THRESHOLD = 200;
 
     for (const other of otherNodes) {
       const oLeft = other.position.x;
@@ -363,40 +531,36 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
       const oTop = other.position.y;
       const oBottom = other.position.y + other.size.height;
 
-      // Horizontal gap (nodes side by side)
-      const overlapY = Math.min(finalBottom, oBottom) - Math.max(finalTop, oTop);
+      // Horizontal gap
+      const overlapY = Math.min(esFinalBottom, oBottom) - Math.max(esFinalTop, oTop);
       if (overlapY > 0) {
-        // Gap to the right
-        if (oLeft > finalRight && oLeft - finalRight < DISTANCE_THRESHOLD) {
-          const gap = Math.round(oLeft - finalRight);
-          const midY = (Math.max(finalTop, oTop) + Math.min(finalBottom, oBottom)) / 2;
-          const midX = (finalRight + oLeft) / 2;
+        if (oLeft > esFinalRight && oLeft - esFinalRight < DISTANCE_THRESHOLD) {
+          const gap = Math.round(oLeft - esFinalRight);
+          const midY = (Math.max(esFinalTop, oTop) + Math.min(esFinalBottom, oBottom)) / 2;
+          const midX = (esFinalRight + oLeft) / 2;
           distances.push({ x: midX, y: midY, distance: gap, orientation: 'horizontal' });
         }
-        // Gap to the left
-        if (finalLeft > oRight && finalLeft - oRight < DISTANCE_THRESHOLD) {
-          const gap = Math.round(finalLeft - oRight);
-          const midY = (Math.max(finalTop, oTop) + Math.min(finalBottom, oBottom)) / 2;
-          const midX = (oRight + finalLeft) / 2;
+        if (esFinalLeft > oRight && esFinalLeft - oRight < DISTANCE_THRESHOLD) {
+          const gap = Math.round(esFinalLeft - oRight);
+          const midY = (Math.max(esFinalTop, oTop) + Math.min(esFinalBottom, oBottom)) / 2;
+          const midX = (oRight + esFinalLeft) / 2;
           distances.push({ x: midX, y: midY, distance: gap, orientation: 'horizontal' });
         }
       }
 
-      // Vertical gap (nodes above/below)
-      const overlapX = Math.min(finalRight, oRight) - Math.max(finalLeft, oLeft);
+      // Vertical gap
+      const overlapX = Math.min(esFinalRight, oRight) - Math.max(esFinalLeft, oLeft);
       if (overlapX > 0) {
-        // Gap below
-        if (oTop > finalBottom && oTop - finalBottom < DISTANCE_THRESHOLD) {
-          const gap = Math.round(oTop - finalBottom);
-          const midX = (Math.max(finalLeft, oLeft) + Math.min(finalRight, oRight)) / 2;
-          const midY = (finalBottom + oTop) / 2;
+        if (oTop > esFinalBottom && oTop - esFinalBottom < DISTANCE_THRESHOLD) {
+          const gap = Math.round(oTop - esFinalBottom);
+          const midX = (Math.max(esFinalLeft, oLeft) + Math.min(esFinalRight, oRight)) / 2;
+          const midY = (esFinalBottom + oTop) / 2;
           distances.push({ x: midX, y: midY, distance: gap, orientation: 'vertical' });
         }
-        // Gap above
-        if (finalTop > oBottom && finalTop - oBottom < DISTANCE_THRESHOLD) {
-          const gap = Math.round(finalTop - oBottom);
-          const midX = (Math.max(finalLeft, oLeft) + Math.min(finalRight, oRight)) / 2;
-          const midY = (oBottom + finalTop) / 2;
+        if (esFinalTop > oBottom && esFinalTop - oBottom < DISTANCE_THRESHOLD) {
+          const gap = Math.round(esFinalTop - oBottom);
+          const midX = (Math.max(esFinalLeft, oLeft) + Math.min(esFinalRight, oRight)) / 2;
+          const midY = (oBottom + esFinalTop) / 2;
           distances.push({ x: midX, y: midY, distance: gap, orientation: 'vertical' });
         }
       }
