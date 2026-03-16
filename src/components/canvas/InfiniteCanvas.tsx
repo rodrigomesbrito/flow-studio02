@@ -649,20 +649,40 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
     // Alt+drag: duplicate first, then drag the duplicates
     if (altKey && !altDragDuplicated.current) {
       altDragDuplicated.current = true;
+
+      // Capture original positions before duplication
+      const originalPositions = new Map<string, Position>();
+      dragging.forEach((id) => {
+        const n = nodes.find((item) => item.id === id);
+        if (n) originalPositions.set(id, { ...n.position });
+      });
+
       const idMap = duplicateNodes(dragging, { x: 0, y: 0 });
-      const newIds = new Set(Array.from(dragging).map((id) => idMap.get(id) || id));
+      const newIds = new Set<string>();
+      dragging.forEach((oldId) => {
+        const newId = idMap.get(oldId);
+        if (newId) newIds.add(newId);
+      });
       dragging = newIds;
       setSelectedNodeIds(newIds);
 
+      // Build start positions from original positions mapped to new IDs
       nodeStartPositions.current = new Map();
-      const latestNodes = nodesRef.current;
-      newIds.forEach((id) => {
-        const n = latestNodes.find((item) => item.id === id);
-        if (n) nodeStartPositions.current.set(id, { ...n.position });
+      dragging.forEach((oldId) => {
+        // idMap is old→new, we need to reverse lookup
+      });
+      originalPositions.forEach((pos, oldId) => {
+        const newId = idMap.get(oldId);
+        if (newId && newIds.has(newId)) {
+          nodeStartPositions.current.set(newId, { ...pos });
+        }
       });
 
-      setDraggingNodeId(Array.from(newIds)[0]);
-      dragStart.current = startMouse;
+      const firstNewId = Array.from(newIds)[0];
+      if (firstNewId) {
+        setDraggingNodeId(firstNewId);
+        dragStart.current = startMouse;
+      }
       return;
     }
 
