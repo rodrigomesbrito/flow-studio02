@@ -237,20 +237,19 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
     return new Set([nodeId]);
   }, [groups]);
 
-  // Compute alignment snap + guides
+  // Compute alignment snap + guides + distance indicators
   const computeSnapAndGuides = useCallback((
     primaryNodeId: string,
     rawX: number,
     rawY: number,
     draggedIds: Set<string>
-  ): { snappedX: number; snappedY: number; guides: AlignmentGuide[] } => {
+  ): { snappedX: number; snappedY: number; guides: AlignmentGuide[]; distances: DistanceIndicator[] } => {
     const primaryNode = nodesRef.current.find(n => n.id === primaryNodeId);
-    if (!primaryNode) return { snappedX: rawX, snappedY: rawY, guides: [] };
+    if (!primaryNode) return { snappedX: rawX, snappedY: rawY, guides: [], distances: [] };
 
     const w = primaryNode.size.width;
     const h = primaryNode.size.height;
 
-    // Edges and center of the dragged node
     const myLeft = rawX;
     const myRight = rawX + w;
     const myCenterX = rawX + w / 2;
@@ -258,7 +257,6 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
     const myBottom = rawY + h;
     const myCenterY = rawY + h / 2;
 
-    // Gather reference edges from other nodes
     const otherNodes = nodesRef.current.filter(n => !draggedIds.has(n.id));
 
     let bestDx = Infinity;
@@ -275,19 +273,13 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
       const oBottom = other.position.y + other.size.height;
       const oCenterY = other.position.y + other.size.height / 2;
 
-      // Vertical alignment (snap X)
       const xPairs = [
-        { my: myLeft, ref: oLeft },
-        { my: myLeft, ref: oRight },
-        { my: myRight, ref: oLeft },
-        { my: myRight, ref: oRight },
+        { my: myLeft, ref: oLeft }, { my: myLeft, ref: oRight },
+        { my: myRight, ref: oLeft }, { my: myRight, ref: oRight },
         { my: myCenterX, ref: oCenterX },
-        { my: myLeft, ref: oCenterX },
-        { my: myRight, ref: oCenterX },
-        { my: myCenterX, ref: oLeft },
-        { my: myCenterX, ref: oRight },
+        { my: myLeft, ref: oCenterX }, { my: myRight, ref: oCenterX },
+        { my: myCenterX, ref: oLeft }, { my: myCenterX, ref: oRight },
       ];
-
       for (const pair of xPairs) {
         const diff = Math.abs(pair.my - pair.ref);
         if (diff < ALIGN_SNAP_THRESHOLD && diff < Math.abs(bestDx)) {
@@ -295,19 +287,13 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
         }
       }
 
-      // Horizontal alignment (snap Y)
       const yPairs = [
-        { my: myTop, ref: oTop },
-        { my: myTop, ref: oBottom },
-        { my: myBottom, ref: oTop },
-        { my: myBottom, ref: oBottom },
+        { my: myTop, ref: oTop }, { my: myTop, ref: oBottom },
+        { my: myBottom, ref: oTop }, { my: myBottom, ref: oBottom },
         { my: myCenterY, ref: oCenterY },
-        { my: myTop, ref: oCenterY },
-        { my: myBottom, ref: oCenterY },
-        { my: myCenterY, ref: oTop },
-        { my: myCenterY, ref: oBottom },
+        { my: myTop, ref: oCenterY }, { my: myBottom, ref: oCenterY },
+        { my: myCenterY, ref: oTop }, { my: myCenterY, ref: oBottom },
       ];
-
       for (const pair of yPairs) {
         const diff = Math.abs(pair.my - pair.ref);
         if (diff < ALIGN_SNAP_THRESHOLD && diff < Math.abs(bestDy)) {
@@ -321,14 +307,12 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
     } else {
       snapX = snapToGrid(rawX);
     }
-
     if (Math.abs(bestDy) < ALIGN_SNAP_THRESHOLD) {
       snapY = rawY + bestDy;
     } else {
       snapY = snapToGrid(rawY);
     }
 
-    // Build guide lines for snapped positions
     const finalLeft = snapX;
     const finalRight = snapX + w;
     const finalCenterX = snapX + w / 2;
@@ -344,7 +328,6 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
       const oBottom = other.position.y + other.size.height;
       const oCenterY = other.position.y + other.size.height / 2;
 
-      // Vertical guides
       const vEdges = [finalLeft, finalRight, finalCenterX];
       const oVEdges = [oLeft, oRight, oCenterX];
       for (const ve of vEdges) {
@@ -357,7 +340,6 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
         }
       }
 
-      // Horizontal guides
       const hEdges = [finalTop, finalBottom, finalCenterY];
       const oHEdges = [oTop, oBottom, oCenterY];
       for (const he of hEdges) {
@@ -371,7 +353,56 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
       }
     }
 
-    return { snappedX: snapX, snappedY: snapY, guides };
+    // Compute distance indicators to nearest neighbors
+    const distances: DistanceIndicator[] = [];
+    const DISTANCE_THRESHOLD = 200; // only show distances within this range
+
+    for (const other of otherNodes) {
+      const oLeft = other.position.x;
+      const oRight = other.position.x + other.size.width;
+      const oTop = other.position.y;
+      const oBottom = other.position.y + other.size.height;
+
+      // Horizontal gap (nodes side by side)
+      const overlapY = Math.min(finalBottom, oBottom) - Math.max(finalTop, oTop);
+      if (overlapY > 0) {
+        // Gap to the right
+        if (oLeft > finalRight && oLeft - finalRight < DISTANCE_THRESHOLD) {
+          const gap = Math.round(oLeft - finalRight);
+          const midY = (Math.max(finalTop, oTop) + Math.min(finalBottom, oBottom)) / 2;
+          const midX = (finalRight + oLeft) / 2;
+          distances.push({ x: midX, y: midY, distance: gap, orientation: 'horizontal' });
+        }
+        // Gap to the left
+        if (finalLeft > oRight && finalLeft - oRight < DISTANCE_THRESHOLD) {
+          const gap = Math.round(finalLeft - oRight);
+          const midY = (Math.max(finalTop, oTop) + Math.min(finalBottom, oBottom)) / 2;
+          const midX = (oRight + finalLeft) / 2;
+          distances.push({ x: midX, y: midY, distance: gap, orientation: 'horizontal' });
+        }
+      }
+
+      // Vertical gap (nodes above/below)
+      const overlapX = Math.min(finalRight, oRight) - Math.max(finalLeft, oLeft);
+      if (overlapX > 0) {
+        // Gap below
+        if (oTop > finalBottom && oTop - finalBottom < DISTANCE_THRESHOLD) {
+          const gap = Math.round(oTop - finalBottom);
+          const midX = (Math.max(finalLeft, oLeft) + Math.min(finalRight, oRight)) / 2;
+          const midY = (finalBottom + oTop) / 2;
+          distances.push({ x: midX, y: midY, distance: gap, orientation: 'vertical' });
+        }
+        // Gap above
+        if (finalTop > oBottom && finalTop - oBottom < DISTANCE_THRESHOLD) {
+          const gap = Math.round(finalTop - oBottom);
+          const midX = (Math.max(finalLeft, oLeft) + Math.min(finalRight, oRight)) / 2;
+          const midY = (oBottom + finalTop) / 2;
+          distances.push({ x: midX, y: midY, distance: gap, orientation: 'vertical' });
+        }
+      }
+    }
+
+    return { snappedX: snapX, snappedY: snapY, guides, distances };
   }, []);
 
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
