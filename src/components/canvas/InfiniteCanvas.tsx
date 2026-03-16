@@ -41,6 +41,13 @@ interface AlignmentGuide {
   end: number;
 }
 
+interface DistanceIndicator {
+  x: number;
+  y: number;
+  distance: number;
+  orientation: 'horizontal' | 'vertical'; // line direction
+}
+
 const GRID_SIZE = 24;
 const GRID_SNAP_THRESHOLD = 8;
 const ALIGN_SNAP_THRESHOLD = 6;
