@@ -13,7 +13,6 @@ interface AlignmentToolbarProps {
   offset: Position;
   zoom: number;
   onUpdateNode: (id: string, updates: Partial<CanvasNode>) => void;
-  onPushHistory?: () => void;
 }
 
 export function AlignmentToolbar({
@@ -28,9 +27,6 @@ export function AlignmentToolbar({
     [nodes, selectedNodeIds]
   );
 
-  if (selectedNodes.length < 2) return null;
-
-  // Bounding box of selection in canvas coords
   const bounds = useMemo(() => {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const n of selectedNodes) {
@@ -42,13 +38,8 @@ export function AlignmentToolbar({
     return { minX, minY, maxX, maxY };
   }, [selectedNodes]);
 
-  // Position toolbar above the selection bounding box (screen coords)
-  const toolbarX = offset.x + ((bounds.minX + bounds.maxX) / 2) * zoom;
-  const toolbarY = offset.y + bounds.minY * zoom - 52;
-
   const alignLeft = useCallback(() => {
-    const target = bounds.minX;
-    selectedNodes.forEach((n) => onUpdateNode(n.id, { position: { ...n.position, x: target } }));
+    selectedNodes.forEach((n) => onUpdateNode(n.id, { position: { ...n.position, x: bounds.minX } }));
   }, [selectedNodes, bounds.minX, onUpdateNode]);
 
   const alignCenterH = useCallback(() => {
@@ -57,13 +48,11 @@ export function AlignmentToolbar({
   }, [selectedNodes, bounds, onUpdateNode]);
 
   const alignRight = useCallback(() => {
-    const target = bounds.maxX;
-    selectedNodes.forEach((n) => onUpdateNode(n.id, { position: { ...n.position, x: target - n.size.width } }));
+    selectedNodes.forEach((n) => onUpdateNode(n.id, { position: { ...n.position, x: bounds.maxX - n.size.width } }));
   }, [selectedNodes, bounds.maxX, onUpdateNode]);
 
   const alignTop = useCallback(() => {
-    const target = bounds.minY;
-    selectedNodes.forEach((n) => onUpdateNode(n.id, { position: { ...n.position, y: target } }));
+    selectedNodes.forEach((n) => onUpdateNode(n.id, { position: { ...n.position, y: bounds.minY } }));
   }, [selectedNodes, bounds.minY, onUpdateNode]);
 
   const alignCenterV = useCallback(() => {
@@ -72,16 +61,14 @@ export function AlignmentToolbar({
   }, [selectedNodes, bounds, onUpdateNode]);
 
   const alignBottom = useCallback(() => {
-    const target = bounds.maxY;
-    selectedNodes.forEach((n) => onUpdateNode(n.id, { position: { ...n.position, y: target - n.size.height } }));
+    selectedNodes.forEach((n) => onUpdateNode(n.id, { position: { ...n.position, y: bounds.maxY - n.size.height } }));
   }, [selectedNodes, bounds.maxY, onUpdateNode]);
 
   const distributeH = useCallback(() => {
     if (selectedNodes.length < 3) return;
     const sorted = [...selectedNodes].sort((a, b) => a.position.x - b.position.x);
     const totalWidth = sorted.reduce((sum, n) => sum + n.size.width, 0);
-    const totalSpan = bounds.maxX - bounds.minX;
-    const gap = (totalSpan - totalWidth) / (sorted.length - 1);
+    const gap = (bounds.maxX - bounds.minX - totalWidth) / (sorted.length - 1);
     let x = bounds.minX;
     sorted.forEach((n) => {
       onUpdateNode(n.id, { position: { ...n.position, x } });
@@ -93,8 +80,7 @@ export function AlignmentToolbar({
     if (selectedNodes.length < 3) return;
     const sorted = [...selectedNodes].sort((a, b) => a.position.y - b.position.y);
     const totalHeight = sorted.reduce((sum, n) => sum + n.size.height, 0);
-    const totalSpan = bounds.maxY - bounds.minY;
-    const gap = (totalSpan - totalHeight) / (sorted.length - 1);
+    const gap = (bounds.maxY - bounds.minY - totalHeight) / (sorted.length - 1);
     let y = bounds.minY;
     sorted.forEach((n) => {
       onUpdateNode(n.id, { position: { ...n.position, y } });
@@ -102,15 +88,21 @@ export function AlignmentToolbar({
     });
   }, [selectedNodes, bounds, onUpdateNode]);
 
+  // Early return AFTER all hooks
+  if (selectedNodes.length < 2) return null;
+
+  const toolbarX = offset.x + ((bounds.minX + bounds.maxX) / 2) * zoom;
+  const toolbarY = offset.y + bounds.minY * zoom - 52;
+
   const actions = [
     { icon: AlignLeft, label: 'Alinhar à esquerda', action: alignLeft },
     { icon: AlignCenter, label: 'Centralizar horizontal', action: alignCenterH },
     { icon: AlignRight, label: 'Alinhar à direita', action: alignRight },
-    null, // separator
+    null,
     { icon: AlignStartVertical, label: 'Alinhar ao topo', action: alignTop },
     { icon: AlignCenterVertical, label: 'Centralizar vertical', action: alignCenterV },
     { icon: AlignEndVertical, label: 'Alinhar embaixo', action: alignBottom },
-    null, // separator
+    null,
     { icon: ArrowRightLeft, label: 'Distribuir horizontalmente', action: distributeH },
     { icon: ArrowUpDown, label: 'Distribuir verticalmente', action: distributeV },
   ];
@@ -119,11 +111,7 @@ export function AlignmentToolbar({
     <TooltipProvider delayDuration={200}>
       <div
         className="absolute z-[10001] pointer-events-auto"
-        style={{
-          left: toolbarX,
-          top: toolbarY,
-          transform: 'translateX(-50%)',
-        }}
+        style={{ left: toolbarX, top: toolbarY, transform: 'translateX(-50%)' }}
       >
         <div className="flex items-center gap-0.5 bg-card/95 backdrop-blur-xl border border-border rounded-lg px-1 py-1 shadow-lg">
           {actions.map((item, i) =>
@@ -134,18 +122,13 @@ export function AlignmentToolbar({
                 <TooltipTrigger asChild>
                   <button
                     onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      item.action();
-                    }}
+                    onClick={(e) => { e.stopPropagation(); item.action(); }}
                     className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <item.icon size={14} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  {item.label}
-                </TooltipContent>
+                <TooltipContent side="top" className="text-xs">{item.label}</TooltipContent>
               </Tooltip>
             )
           )}
