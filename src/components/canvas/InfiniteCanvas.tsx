@@ -956,6 +956,71 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
                 </svg>
               )}
 
+              {/* Distance indicators */}
+              {distanceIndicators.length > 0 && (
+                <svg
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ overflow: 'visible', zIndex: 10000 }}
+                >
+                  {distanceIndicators.map((d, i) => {
+                    const fontSize = 11 / zoom;
+                    const padX = 4 / zoom;
+                    const padY = 2 / zoom;
+                    const lineLen = d.distance;
+                    const label = `${d.distance}`;
+                    return (
+                      <g key={i}>
+                        {/* Distance line */}
+                        {d.orientation === 'horizontal' ? (
+                          <line
+                            x1={d.x - lineLen / 2}
+                            y1={d.y}
+                            x2={d.x + lineLen / 2}
+                            y2={d.y}
+                            stroke="hsl(0 84% 67%)"
+                            strokeWidth={1 / zoom}
+                            opacity={0.7}
+                          />
+                        ) : (
+                          <line
+                            x1={d.x}
+                            y1={d.y - lineLen / 2}
+                            x2={d.x}
+                            y2={d.y + lineLen / 2}
+                            stroke="hsl(0 84% 67%)"
+                            strokeWidth={1 / zoom}
+                            opacity={0.7}
+                          />
+                        )}
+                        {/* Label background */}
+                        <rect
+                          x={d.x - (label.length * fontSize * 0.35) - padX}
+                          y={d.y - fontSize / 2 - padY - (d.orientation === 'horizontal' ? fontSize : 0)}
+                          width={(label.length * fontSize * 0.7) + padX * 2}
+                          height={fontSize + padY * 2}
+                          rx={3 / zoom}
+                          fill="hsl(0 84% 67%)"
+                          opacity={0.85}
+                        />
+                        {/* Label text */}
+                        <text
+                          x={d.x}
+                          y={d.y - (d.orientation === 'horizontal' ? fontSize * 0.35 : -fontSize * 0.35)}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fill="white"
+                          fontSize={fontSize}
+                          fontFamily="Inter, sans-serif"
+                          fontWeight={500}
+                        >
+                          {label}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              )}
+
               {/* Marquee selection box */}
               {marqueeStyle && (
                 <div
