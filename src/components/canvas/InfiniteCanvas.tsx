@@ -123,8 +123,9 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
   // Grouping
   const [groups, setGroups] = useState<NodeGroup[]>([]);
 
-  // Alignment guides
+  // Alignment guides & distance indicators
   const [alignmentGuides, setAlignmentGuides] = useState<AlignmentGuide[]>([]);
+  const [distanceIndicators, setDistanceIndicators] = useState<DistanceIndicator[]>([]);
 
   // Context menu position (canvas coords)
   const contextMenuCanvasPos = useRef<Position>({ x: 0, y: 0 });
