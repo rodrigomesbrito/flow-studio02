@@ -598,6 +598,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
       setIsPanning(false);
       setDraggingNodeId(null);
       setAlignmentGuides([]);
+      setDistanceIndicators([]);
       altDragDuplicated.current = false;
       finishMarqueeSelection();
       finishConnectionDrag(e.clientX, e.clientY);
