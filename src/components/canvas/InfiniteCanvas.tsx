@@ -476,6 +476,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
         });
 
         setAlignmentGuides(guides);
+        setDistanceIndicators(distances);
       }
     }
 
