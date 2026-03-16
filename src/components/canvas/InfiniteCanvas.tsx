@@ -1295,7 +1295,14 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
         onUndo={undo}
         onRedo={redo}
       />
-      
+
+      <AlignmentToolbar
+        selectedNodeIds={selectedNodeIds}
+        nodes={nodes}
+        offset={offset}
+        zoom={zoom}
+        onUpdateNode={updateNode}
+      />
     </div>
   );
 }
