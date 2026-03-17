@@ -72,8 +72,8 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
   const {
     nodes, connections, offset, zoom, selectedNodeIds,
     setOffset, setZoom, setSelectedNodeIds,
-    loadData,
-    addNode, addNodeAt, updateNode, deleteNode, duplicateNode, duplicateNodes,
+    loadData, beginHistoryAction, endHistoryAction,
+    addNode, addNodeAt, updateNode, deleteNode, deleteNodes, applyNodeUpdates, duplicateNode, duplicateNodes,
     copyNodes, pasteNodes,
     addConnection, deleteConnection, updateConnectionColor,
     undo, redo, zoomIn, zoomOut, resetView, centerOnContent,

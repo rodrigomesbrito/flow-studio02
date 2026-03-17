@@ -423,6 +423,7 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
     updateNode,
     deleteNode,
     deleteNodes,
+    applyNodeUpdates,
     duplicateNode,
     duplicateNodes,
     copyNodes,
