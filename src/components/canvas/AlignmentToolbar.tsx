@@ -12,7 +12,7 @@ interface AlignmentToolbarProps {
   nodes: CanvasNode[];
   offset: Position;
   zoom: number;
-  onUpdateNode: (id: string, updates: Partial<CanvasNode>) => void;
+  onApplyUpdates: (updates: Array<{ id: string; updates: Partial<CanvasNode> }>) => void;
 }
 
 export function AlignmentToolbar({
