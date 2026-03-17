@@ -859,16 +859,16 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
 
     // Alt+drag: duplicate first, then drag the duplicates
     if (altKey && !altDragDuplicated.current) {
+      beginHistoryAction();
       altDragDuplicated.current = true;
 
-      // Capture original positions before duplication
       const originalPositions = new Map<string, Position>();
       dragging.forEach((id) => {
         const n = nodes.find((item) => item.id === id);
         if (n) originalPositions.set(id, { ...n.position });
       });
 
-      const idMap = duplicateNodes(dragging, { x: 0, y: 0 });
+      const idMap = duplicateNodes(dragging, { x: 0, y: 0 }, { history: 'none' });
       const newIds = new Set<string>();
       dragging.forEach((oldId) => {
         const newId = idMap.get(oldId);
@@ -877,11 +877,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
       dragging = newIds;
       setSelectedNodeIds(newIds);
 
-      // Build start positions from original positions mapped to new IDs
       nodeStartPositions.current = new Map();
-      dragging.forEach((oldId) => {
-        // idMap is old→new, we need to reverse lookup
-      });
       originalPositions.forEach((pos, oldId) => {
         const newId = idMap.get(oldId);
         if (newId && newIds.has(newId)) {
@@ -896,6 +892,8 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
       }
       return;
     }
+
+    beginHistoryAction();
 
     // Store start positions for all dragged nodes
     nodeStartPositions.current = new Map();
