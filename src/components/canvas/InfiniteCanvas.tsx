@@ -778,7 +778,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
       window.removeEventListener('mousemove', handleWindowMouseMove);
       window.removeEventListener('mouseup', handleWindowMouseUp);
     };
-  }, [draggingNodeId, isConnecting, finishConnectionDrag, finishMarqueeSelection, handleMouseMove, isPanning]);
+  }, [draggingNodeId, isConnecting, endHistoryAction, finishConnectionDrag, finishMarqueeSelection, handleMouseMove, isPanning]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
