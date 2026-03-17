@@ -1,5 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { CanvasNode, Connection, Position, NodeType } from '@/types/canvas';
+import { useCanvasHistory, type CanvasHistoryOptions, type CanvasSnapshot } from '@/hooks/canvas/useCanvasHistory';
 
 const DEFAULT_CONNECTION_COLOR = '#a855f7';
 
@@ -59,43 +60,86 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
   const onDataChangeRef = useRef(onDataChange);
   onDataChangeRef.current = onDataChange;
 
-  const historyRef = useRef<{ nodes: CanvasNode[]; connections: Connection[] }[]>([{ nodes: [], connections: [] }]);
-  const historyIndexRef = useRef(0);
+  const nodesRef = useRef(nodes);
+  const connectionsRef = useRef(connections);
+  const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+
+  useEffect(() => {
+    connectionsRef.current = connections;
+  }, [connections]);
+
+  const {
+    beginAction,
+    endAction,
+    pushSnapshot,
+    redo: redoHistory,
+    reset,
+    scheduleSnapshot,
+    undo: undoHistory,
+  } = useCanvasHistory();
+
+  const applySnapshot = useCallback((snapshot: CanvasSnapshot) => {
+    nodesRef.current = snapshot.nodes;
+    connectionsRef.current = snapshot.connections;
+    setNodes(snapshot.nodes);
+    setConnections(snapshot.connections);
+  }, []);
+
+  const commitState = useCallback((
+    nextNodes: CanvasNode[],
+    nextConnections: Connection[],
+    options: CanvasHistoryOptions = {},
+  ) => {
+    hydratedRef.current = true;
+    applySnapshot({ nodes: nextNodes, connections: nextConnections });
+
+    const historyMode = options.history ?? 'push';
+    if (historyMode === 'push') {
+      pushSnapshot({ nodes: nextNodes, connections: nextConnections });
+      return;
+    }
+
+    if (historyMode === 'debounced') {
+      scheduleSnapshot({ nodes: nextNodes, connections: nextConnections }, options.debounceMs);
+    }
+  }, [applySnapshot, pushSnapshot, scheduleSnapshot]);
 
   // Load initial data from outside
   const loadData = useCallback((initialNodes: CanvasNode[], initialConnections: Connection[]) => {
-    setNodes(initialNodes);
-    setConnections(initialConnections);
-    historyRef.current = [{ nodes: cloneState(initialNodes), connections: cloneState(initialConnections) }];
-    historyIndexRef.current = 0;
-  }, []);
+    hydratedRef.current = true;
+    applySnapshot({ nodes: initialNodes, connections: initialConnections });
+    reset({ nodes: initialNodes, connections: initialConnections });
+  }, [applySnapshot, reset]);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    onDataChangeRef.current?.(nodes, connections);
+  }, [nodes, connections]);
 
   // Clipboard for copy/paste
   const clipboardRef = useRef<{ nodes: CanvasNode[]; connections: Connection[] } | null>(null);
 
-  const pushHistory = useCallback((nextNodes: CanvasNode[], nextConnections: Connection[]) => {
-    const newHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
-    newHistory.push({ nodes: cloneState(nextNodes), connections: cloneState(nextConnections) });
-    if (newHistory.length > 50) newHistory.shift();
-    historyRef.current = newHistory;
-    historyIndexRef.current = newHistory.length - 1;
-    onDataChangeRef.current?.(nextNodes, nextConnections);
-  }, []);
+  const beginHistoryAction = useCallback(() => {
+    beginAction({ nodes: nodesRef.current, connections: connectionsRef.current });
+  }, [beginAction]);
+
+  const endHistoryAction = useCallback(() => {
+    endAction({ nodes: nodesRef.current, connections: connectionsRef.current });
+  }, [endAction]);
 
   const addNode = useCallback((type: NodeType) => {
     const centerX = (-offset.x + window.innerWidth / 2) / zoom - 160;
     const centerY = (-offset.y + window.innerHeight / 2) / zoom - 100;
     const node = createNode(type, { x: centerX, y: centerY });
 
-    setNodes((prevNodes) => {
-      const nextNodes = [...prevNodes, node];
-      pushHistory(nextNodes, connections);
-      return nextNodes;
-    });
-
+    commitState([...nodesRef.current, node], connectionsRef.current, { history: 'push' });
     setSelectedNodeIds(new Set([node.id]));
     return node.id;
-  }, [connections, offset.x, offset.y, pushHistory, zoom]);
+  }, [commitState, offset.x, offset.y, zoom]);
 
   // Add node at specific canvas position (for double-click)
   const addNodeAt = useCallback((type: NodeType, position: Position) => {
@@ -105,40 +149,38 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
       y: position.y - defaults.height / 2,
     });
 
-    setNodes((prevNodes) => {
-      const nextNodes = [...prevNodes, node];
-      pushHistory(nextNodes, connections);
-      return nextNodes;
-    });
-
+    commitState([...nodesRef.current, node], connectionsRef.current, { history: 'push' });
     setSelectedNodeIds(new Set([node.id]));
     return node.id;
-  }, [connections, pushHistory]);
+  }, [commitState]);
 
-  const updateNode = useCallback((id: string, updates: Partial<CanvasNode>) => {
-    setNodes((prevNodes) => prevNodes.map((node) => (node.id === id ? { ...node, ...updates } : node)));
-  }, []);
+  const updateNode = useCallback((id: string, updates: Partial<CanvasNode>, options: CanvasHistoryOptions = { history: 'debounced', debounceMs: 250 }) => {
+    const nextNodes = nodesRef.current.map((node) => (node.id === id ? { ...node, ...updates } : node));
+    commitState(nextNodes, connectionsRef.current, options);
+  }, [commitState]);
 
-  const deleteNode = useCallback((id: string) => {
-    setNodes((prevNodes) => {
-      const nextNodes = prevNodes.filter((node) => node.id !== id);
-      setConnections((prevConnections) => {
-        const nextConnections = prevConnections.filter((connection) => connection.fromNodeId !== id && connection.toNodeId !== id);
-        pushHistory(nextNodes, nextConnections);
-        return nextConnections;
-      });
-      return nextNodes;
-    });
+  const deleteNode = useCallback((id: string, options: CanvasHistoryOptions = { history: 'push' }) => {
+    const nextNodes = nodesRef.current.filter((node) => node.id !== id);
+    const nextConnections = connectionsRef.current.filter((connection) => connection.fromNodeId !== id && connection.toNodeId !== id);
+    commitState(nextNodes, nextConnections, options);
 
     setSelectedNodeIds((current) => {
       const next = new Set(current);
       next.delete(id);
       return next;
     });
-  }, [pushHistory]);
+  }, [commitState]);
 
-  const duplicateNode = useCallback((id: string) => {
-    const node = nodes.find((item) => item.id === id);
+  const deleteNodes = useCallback((ids: Set<string>, options: CanvasHistoryOptions = { history: 'push' }) => {
+    if (ids.size === 0) return;
+    const nextNodes = nodesRef.current.filter((node) => !ids.has(node.id));
+    const nextConnections = connectionsRef.current.filter((connection) => !ids.has(connection.fromNodeId) && !ids.has(connection.toNodeId));
+    commitState(nextNodes, nextConnections, options);
+    setSelectedNodeIds(new Set());
+  }, [commitState]);
+
+  const duplicateNode = useCallback((id: string, options: CanvasHistoryOptions = { history: 'push' }) => {
+    const node = nodesRef.current.find((item) => item.id === id);
     if (!node) return;
 
     const duplicatedNode: CanvasNode = {
@@ -148,18 +190,17 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
       ports: NO_PORTS_TYPES.includes(node.type) ? [] : createDefaultPorts(),
     };
 
-    setNodes((prevNodes) => {
-      const nextNodes = [...prevNodes, duplicatedNode];
-      pushHistory(nextNodes, connections);
-      return nextNodes;
-    });
-
+    commitState([...nodesRef.current, duplicatedNode], connectionsRef.current, options);
     setSelectedNodeIds(new Set([duplicatedNode.id]));
-  }, [connections, nodes, pushHistory]);
+  }, [commitState]);
 
   // Duplicate multiple nodes preserving relative positions
-  const duplicateNodes = useCallback((ids: Set<string>, offsetDelta: Position = { x: 40, y: 40 }) => {
-    const sourceNodes = nodes.filter((n) => ids.has(n.id));
+  const duplicateNodes = useCallback((
+    ids: Set<string>,
+    offsetDelta: Position = { x: 40, y: 40 },
+    options: CanvasHistoryOptions = { history: 'push' },
+  ) => {
+    const sourceNodes = nodesRef.current.filter((n) => ids.has(n.id));
     if (sourceNodes.length === 0) return new Map<string, string>();
 
     const idMap = new Map<string, string>();
@@ -174,9 +215,8 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
       };
     });
 
-    // Also duplicate connections between duplicated nodes
     const newConnections: Connection[] = [];
-    connections.forEach((conn) => {
+    connectionsRef.current.forEach((conn) => {
       if (idMap.has(conn.fromNodeId) && idMap.has(conn.toNodeId)) {
         const newFromNode = newNodes.find((n) => n.id === idMap.get(conn.fromNodeId));
         const newToNode = newNodes.find((n) => n.id === idMap.get(conn.toNodeId));
@@ -193,28 +233,19 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
       }
     });
 
-    setNodes((prevNodes) => {
-      const nextNodes = [...prevNodes, ...newNodes];
-      setConnections((prevConns) => {
-        const nextConns = [...prevConns, ...newConnections];
-        pushHistory(nextNodes, nextConns);
-        return nextConns;
-      });
-      return nextNodes;
-    });
-
+    commitState([...nodesRef.current, ...newNodes], [...connectionsRef.current, ...newConnections], options);
     setSelectedNodeIds(new Set(newNodes.map((n) => n.id)));
     return idMap;
-  }, [connections, nodes, pushHistory]);
+  }, [commitState]);
 
   // Copy selected nodes to clipboard
   const copyNodes = useCallback((ids: Set<string>) => {
-    const sourceNodes = nodes.filter((n) => ids.has(n.id));
-    const sourceConns = connections.filter(
+    const sourceNodes = nodesRef.current.filter((n) => ids.has(n.id));
+    const sourceConns = connectionsRef.current.filter(
       (c) => ids.has(c.fromNodeId) && ids.has(c.toNodeId)
     );
     clipboardRef.current = { nodes: cloneState(sourceNodes), connections: cloneState(sourceConns) };
-  }, [nodes, connections]);
+  }, []);
 
   // Paste from clipboard
   const pasteNodes = useCallback(() => {
@@ -228,7 +259,6 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
       const newId = crypto.randomUUID();
       idMap.set(node.id, newId);
       const newPorts = NO_PORTS_TYPES.includes(node.type) ? [] : createDefaultPorts();
-      // Map old port ids to new ones
       node.ports.forEach((oldPort, i) => {
         if (newPorts[i]) portMap.set(oldPort.id, newPorts[i].id);
       });
@@ -258,17 +288,8 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
       }
     });
 
-    setNodes((prevNodes) => {
-      const nextNodes = [...prevNodes, ...newNodes];
-      setConnections((prevConns) => {
-        const nextConns = [...prevConns, ...newConnections];
-        pushHistory(nextNodes, nextConns);
-        return nextConns;
-      });
-      return nextNodes;
-    });
+    commitState([...nodesRef.current, ...newNodes], [...connectionsRef.current, ...newConnections], { history: 'push' });
 
-    // Update clipboard positions so next paste offsets further
     clipboardRef.current = {
       nodes: clipboardRef.current.nodes.map((n) => ({
         ...n,
@@ -278,79 +299,64 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
     };
 
     setSelectedNodeIds(new Set(newNodes.map((n) => n.id)));
-  }, [pushHistory]);
+  }, [commitState]);
 
   const addConnection = useCallback((fromNodeId: string, fromPortId: string, toNodeId: string, toPortId: string) => {
     if (fromNodeId === toNodeId) return;
 
-    const sourceNode = nodes.find((node) => node.id === fromNodeId);
-    const targetNode = nodes.find((node) => node.id === toNodeId);
+    const sourceNode = nodesRef.current.find((node) => node.id === fromNodeId);
+    const targetNode = nodesRef.current.find((node) => node.id === toNodeId);
     const sourcePort = sourceNode?.ports.find((port) => port.id === fromPortId);
     const targetPort = targetNode?.ports.find((port) => port.id === toPortId);
 
     if (!sourceNode || !targetNode || !sourcePort || !targetPort) return;
     if (sourcePort.type !== 'output' || targetPort.type !== 'input') return;
 
-    setConnections((prevConnections) => {
-      const exists = prevConnections.some((connection) =>
-        connection.fromNodeId === fromNodeId &&
-        connection.fromPortId === fromPortId &&
-        connection.toNodeId === toNodeId &&
-        connection.toPortId === toPortId
-      );
+    const exists = connectionsRef.current.some((connection) =>
+      connection.fromNodeId === fromNodeId &&
+      connection.fromPortId === fromPortId &&
+      connection.toNodeId === toNodeId &&
+      connection.toPortId === toPortId
+    );
 
-      if (exists) return prevConnections;
+    if (exists) return;
 
-      const nextConnections = [
-        ...prevConnections,
-        {
-          id: crypto.randomUUID(),
-          fromNodeId,
-          fromPortId,
-          toNodeId,
-          toPortId,
-          color: DEFAULT_CONNECTION_COLOR,
-        },
-      ];
+    commitState(nodesRef.current, [
+      ...connectionsRef.current,
+      {
+        id: crypto.randomUUID(),
+        fromNodeId,
+        fromPortId,
+        toNodeId,
+        toPortId,
+        color: DEFAULT_CONNECTION_COLOR,
+      },
+    ], { history: 'push' });
+  }, [commitState]);
 
-      pushHistory(nodes, nextConnections);
-      return nextConnections;
-    });
-  }, [nodes, pushHistory]);
+  const deleteConnection = useCallback((id: string, options: CanvasHistoryOptions = { history: 'push' }) => {
+    const nextConnections = connectionsRef.current.filter((connection) => connection.id !== id);
+    commitState(nodesRef.current, nextConnections, options);
+  }, [commitState]);
 
-  const deleteConnection = useCallback((id: string) => {
-    setConnections((prevConnections) => {
-      const nextConnections = prevConnections.filter((connection) => connection.id !== id);
-      pushHistory(nodes, nextConnections);
-      return nextConnections;
-    });
-  }, [nodes, pushHistory]);
-
-  const updateConnectionColor = useCallback((id: string, color: string) => {
-    setConnections((prevConnections) => {
-      const nextConnections = prevConnections.map((connection) =>
-        connection.id === id ? { ...connection, color } : connection,
-      );
-      pushHistory(nodes, nextConnections);
-      return nextConnections;
-    });
-  }, [nodes, pushHistory]);
+  const updateConnectionColor = useCallback((id: string, color: string, options: CanvasHistoryOptions = { history: 'push' }) => {
+    const nextConnections = connectionsRef.current.map((connection) =>
+      connection.id === id ? { ...connection, color } : connection,
+    );
+    commitState(nodesRef.current, nextConnections, options);
+  }, [commitState]);
 
   const undo = useCallback(() => {
-    if (historyIndexRef.current <= 0) return;
-    historyIndexRef.current -= 1;
-    const state = historyRef.current[historyIndexRef.current];
-    setNodes(cloneState(state.nodes));
-    setConnections(cloneState(state.connections));
-  }, []);
+    const snapshot = undoHistory();
+    if (!snapshot) return;
+    applySnapshot(snapshot);
+  }, [applySnapshot, undoHistory]);
 
   const redo = useCallback(() => {
-    if (historyIndexRef.current >= historyRef.current.length - 1) return;
-    historyIndexRef.current += 1;
-    const state = historyRef.current[historyIndexRef.current];
-    setNodes(cloneState(state.nodes));
-    setConnections(cloneState(state.connections));
-  }, []);
+    const snapshot = redoHistory();
+    if (!snapshot) return;
+    applySnapshot(snapshot);
+  }, [applySnapshot, redoHistory]);
 
   const zoomIn = useCallback(() => setZoom((value) => Math.min(value * 1.2, 3)), []);
   const zoomOut = useCallback(() => setZoom((value) => Math.max(value / 1.2, 0.2)), []);
@@ -378,7 +384,6 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
     const viewWidth = window.innerWidth;
     const viewHeight = window.innerHeight;
 
-    // Fit content with padding
     const padding = 100;
     const scaleX = (viewWidth - padding * 2) / contentWidth;
     const scaleY = (viewHeight - padding * 2) / contentHeight;
@@ -401,10 +406,13 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
     setZoom,
     setSelectedNodeIds,
     loadData,
+    beginHistoryAction,
+    endHistoryAction,
     addNode,
     addNodeAt,
     updateNode,
     deleteNode,
+    deleteNodes,
     duplicateNode,
     duplicateNodes,
     copyNodes,
