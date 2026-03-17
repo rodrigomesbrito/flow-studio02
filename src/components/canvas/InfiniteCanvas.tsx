@@ -1033,7 +1033,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [selectedNodeIds, selectedConnectionId, deleteNode, deleteConnection, undo, redo, setSelectedNodeIds, resetConnectionDrag, activeTool, addNode, copyNodes, pasteNodes, groupSelected, ungroupSelected]);
+  }, [selectedNodeIds, selectedConnectionId, deleteNode, deleteNodes, deleteConnection, undo, redo, setSelectedNodeIds, resetConnectionDrag, activeTool, addNode, copyNodes, pasteNodes, groupSelected, ungroupSelected]);
 
   // Compute marquee box in screen coords for the overlay
   const marqueeStyle = selectionBox ? (() => {
