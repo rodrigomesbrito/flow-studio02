@@ -963,8 +963,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
           deleteConnection(selectedConnectionId);
           setSelectedConnectionId(null);
         } else if (selectedNodeIds.size > 0) {
-          selectedNodeIds.forEach((id) => deleteNode(id));
-          setSelectedNodeIds(new Set());
+          deleteNodes(selectedNodeIds);
         }
       }
 
