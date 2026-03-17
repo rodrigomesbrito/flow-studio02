@@ -781,8 +781,10 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
   }, [draggingNodeId, isConnecting, endHistoryAction, finishConnectionDrag, finishMarqueeSelection, handleMouseMove, isPanning]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (!(e.ctrlKey || e.metaKey)) return;
+
     e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const delta = e.deltaY > 0 ? 0.92 : 1.08;
     const newZoom = Math.min(3, Math.max(0.2, zoom * delta));
     const rect = canvasRef.current!.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
