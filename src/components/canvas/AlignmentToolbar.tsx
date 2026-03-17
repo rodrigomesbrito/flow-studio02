@@ -20,7 +20,7 @@ export function AlignmentToolbar({
   nodes,
   offset,
   zoom,
-  onUpdateNode,
+  onApplyUpdates,
 }: AlignmentToolbarProps) {
   const selectedNodes = useMemo(
     () => nodes.filter((n) => selectedNodeIds.has(n.id)),
