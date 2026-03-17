@@ -745,6 +745,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
   }, [handleMouseMove]);
 
   const handleCanvasMouseUp = useCallback((e: React.MouseEvent) => {
+    if (draggingNodeId) endHistoryAction();
     setIsPanning(false);
     setDraggingNodeId(null);
     setAlignmentGuides([]);
@@ -752,7 +753,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
     altDragDuplicated.current = false;
     finishMarqueeSelection();
     finishConnectionDrag(e.clientX, e.clientY);
-  }, [finishConnectionDrag, finishMarqueeSelection]);
+  }, [draggingNodeId, endHistoryAction, finishConnectionDrag, finishMarqueeSelection]);
 
   useEffect(() => {
     const isActive = Boolean(draggingNodeId || isConnecting || isPanning || isMarqueeActive.current);
