@@ -39,30 +39,30 @@ export function AlignmentToolbar({
   }, [selectedNodes]);
 
   const alignLeft = useCallback(() => {
-    selectedNodes.forEach((n) => onUpdateNode(n.id, { position: { ...n.position, x: bounds.minX } }));
-  }, [selectedNodes, bounds.minX, onUpdateNode]);
+    onApplyUpdates(selectedNodes.map((n) => ({ id: n.id, updates: { position: { ...n.position, x: bounds.minX } } })));
+  }, [selectedNodes, bounds.minX, onApplyUpdates]);
 
   const alignCenterH = useCallback(() => {
     const center = (bounds.minX + bounds.maxX) / 2;
-    selectedNodes.forEach((n) => onUpdateNode(n.id, { position: { ...n.position, x: center - n.size.width / 2 } }));
-  }, [selectedNodes, bounds, onUpdateNode]);
+    onApplyUpdates(selectedNodes.map((n) => ({ id: n.id, updates: { position: { ...n.position, x: center - n.size.width / 2 } } })));
+  }, [selectedNodes, bounds, onApplyUpdates]);
 
   const alignRight = useCallback(() => {
-    selectedNodes.forEach((n) => onUpdateNode(n.id, { position: { ...n.position, x: bounds.maxX - n.size.width } }));
-  }, [selectedNodes, bounds.maxX, onUpdateNode]);
+    onApplyUpdates(selectedNodes.map((n) => ({ id: n.id, updates: { position: { ...n.position, x: bounds.maxX - n.size.width } } })));
+  }, [selectedNodes, bounds.maxX, onApplyUpdates]);
 
   const alignTop = useCallback(() => {
-    selectedNodes.forEach((n) => onUpdateNode(n.id, { position: { ...n.position, y: bounds.minY } }));
-  }, [selectedNodes, bounds.minY, onUpdateNode]);
+    onApplyUpdates(selectedNodes.map((n) => ({ id: n.id, updates: { position: { ...n.position, y: bounds.minY } } })));
+  }, [selectedNodes, bounds.minY, onApplyUpdates]);
 
   const alignCenterV = useCallback(() => {
     const center = (bounds.minY + bounds.maxY) / 2;
-    selectedNodes.forEach((n) => onUpdateNode(n.id, { position: { ...n.position, y: center - n.size.height / 2 } }));
-  }, [selectedNodes, bounds, onUpdateNode]);
+    onApplyUpdates(selectedNodes.map((n) => ({ id: n.id, updates: { position: { ...n.position, y: center - n.size.height / 2 } } })));
+  }, [selectedNodes, bounds, onApplyUpdates]);
 
   const alignBottom = useCallback(() => {
-    selectedNodes.forEach((n) => onUpdateNode(n.id, { position: { ...n.position, y: bounds.maxY - n.size.height } }));
-  }, [selectedNodes, bounds.maxY, onUpdateNode]);
+    onApplyUpdates(selectedNodes.map((n) => ({ id: n.id, updates: { position: { ...n.position, y: bounds.maxY - n.size.height } } })));
+  }, [selectedNodes, bounds.maxY, onApplyUpdates]);
 
   const distributeH = useCallback(() => {
     if (selectedNodes.length < 3) return;
@@ -70,11 +70,12 @@ export function AlignmentToolbar({
     const totalWidth = sorted.reduce((sum, n) => sum + n.size.width, 0);
     const gap = (bounds.maxX - bounds.minX - totalWidth) / (sorted.length - 1);
     let x = bounds.minX;
-    sorted.forEach((n) => {
-      onUpdateNode(n.id, { position: { ...n.position, x } });
+    onApplyUpdates(sorted.map((n) => {
+      const next = { id: n.id, updates: { position: { ...n.position, x } } };
       x += n.size.width + gap;
-    });
-  }, [selectedNodes, bounds, onUpdateNode]);
+      return next;
+    }));
+  }, [selectedNodes, bounds, onApplyUpdates]);
 
   const distributeV = useCallback(() => {
     if (selectedNodes.length < 3) return;
@@ -82,11 +83,12 @@ export function AlignmentToolbar({
     const totalHeight = sorted.reduce((sum, n) => sum + n.size.height, 0);
     const gap = (bounds.maxY - bounds.minY - totalHeight) / (sorted.length - 1);
     let y = bounds.minY;
-    sorted.forEach((n) => {
-      onUpdateNode(n.id, { position: { ...n.position, y } });
+    onApplyUpdates(sorted.map((n) => {
+      const next = { id: n.id, updates: { position: { ...n.position, y } } };
       y += n.size.height + gap;
-    });
-  }, [selectedNodes, bounds, onUpdateNode]);
+      return next;
+    }));
+  }, [selectedNodes, bounds, onApplyUpdates]);
 
   // Early return AFTER all hooks
   if (selectedNodes.length < 2) return null;
