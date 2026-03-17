@@ -1302,7 +1302,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
         nodes={nodes}
         offset={offset}
         zoom={zoom}
-        onUpdateNode={updateNode}
+        onApplyUpdates={applyNodeUpdates}
       />
     </div>
   );
