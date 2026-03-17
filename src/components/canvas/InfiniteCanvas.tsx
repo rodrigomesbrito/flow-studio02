@@ -72,8 +72,8 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
   const {
     nodes, connections, offset, zoom, selectedNodeIds,
     setOffset, setZoom, setSelectedNodeIds,
-    loadData,
-    addNode, addNodeAt, updateNode, deleteNode, duplicateNode, duplicateNodes,
+    loadData, beginHistoryAction, endHistoryAction,
+    addNode, addNodeAt, updateNode, deleteNode, deleteNodes, applyNodeUpdates, duplicateNode, duplicateNodes,
     copyNodes, pasteNodes,
     addConnection, deleteConnection, updateConnectionColor,
     undo, redo, zoomIn, zoomOut, resetView, centerOnContent,
@@ -637,7 +637,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
         nodeStartPositions.current.forEach((startPos, nodeId) => {
           updateNode(nodeId, {
             position: { x: startPos.x + snapDx, y: startPos.y + snapDy }
-          });
+          }, { history: 'none' });
         });
 
         setAlignmentGuides(guides);
@@ -745,6 +745,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
   }, [handleMouseMove]);
 
   const handleCanvasMouseUp = useCallback((e: React.MouseEvent) => {
+    if (draggingNodeId) endHistoryAction();
     setIsPanning(false);
     setDraggingNodeId(null);
     setAlignmentGuides([]);
@@ -752,7 +753,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
     altDragDuplicated.current = false;
     finishMarqueeSelection();
     finishConnectionDrag(e.clientX, e.clientY);
-  }, [finishConnectionDrag, finishMarqueeSelection]);
+  }, [draggingNodeId, endHistoryAction, finishConnectionDrag, finishMarqueeSelection]);
 
   useEffect(() => {
     const isActive = Boolean(draggingNodeId || isConnecting || isPanning || isMarqueeActive.current);
@@ -760,6 +761,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
 
     const handleWindowMouseMove = (e: MouseEvent) => handleMouseMove(e.clientX, e.clientY);
     const handleWindowMouseUp = (e: MouseEvent) => {
+      if (draggingNodeId) endHistoryAction();
       setIsPanning(false);
       setDraggingNodeId(null);
       setAlignmentGuides([]);
@@ -776,11 +778,13 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
       window.removeEventListener('mousemove', handleWindowMouseMove);
       window.removeEventListener('mouseup', handleWindowMouseUp);
     };
-  }, [draggingNodeId, isConnecting, finishConnectionDrag, finishMarqueeSelection, handleMouseMove, isPanning]);
+  }, [draggingNodeId, isConnecting, endHistoryAction, finishConnectionDrag, finishMarqueeSelection, handleMouseMove, isPanning]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (!(e.ctrlKey || e.metaKey)) return;
+
     e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const delta = e.deltaY > 0 ? 0.92 : 1.08;
     const newZoom = Math.min(3, Math.max(0.2, zoom * delta));
     const rect = canvasRef.current!.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
@@ -855,16 +859,16 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
 
     // Alt+drag: duplicate first, then drag the duplicates
     if (altKey && !altDragDuplicated.current) {
+      beginHistoryAction();
       altDragDuplicated.current = true;
 
-      // Capture original positions before duplication
       const originalPositions = new Map<string, Position>();
       dragging.forEach((id) => {
         const n = nodes.find((item) => item.id === id);
         if (n) originalPositions.set(id, { ...n.position });
       });
 
-      const idMap = duplicateNodes(dragging, { x: 0, y: 0 });
+      const idMap = duplicateNodes(dragging, { x: 0, y: 0 }, { history: 'none' });
       const newIds = new Set<string>();
       dragging.forEach((oldId) => {
         const newId = idMap.get(oldId);
@@ -873,11 +877,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
       dragging = newIds;
       setSelectedNodeIds(newIds);
 
-      // Build start positions from original positions mapped to new IDs
       nodeStartPositions.current = new Map();
-      dragging.forEach((oldId) => {
-        // idMap is old→new, we need to reverse lookup
-      });
       originalPositions.forEach((pos, oldId) => {
         const newId = idMap.get(oldId);
         if (newId && newIds.has(newId)) {
@@ -892,6 +892,8 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
       }
       return;
     }
+
+    beginHistoryAction();
 
     // Store start positions for all dragged nodes
     nodeStartPositions.current = new Map();
@@ -961,8 +963,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
           deleteConnection(selectedConnectionId);
           setSelectedConnectionId(null);
         } else if (selectedNodeIds.size > 0) {
-          selectedNodeIds.forEach((id) => deleteNode(id));
-          setSelectedNodeIds(new Set());
+          deleteNodes(selectedNodeIds);
         }
       }
 
@@ -1032,7 +1033,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [selectedNodeIds, selectedConnectionId, deleteNode, deleteConnection, undo, redo, setSelectedNodeIds, resetConnectionDrag, activeTool, addNode, copyNodes, pasteNodes, groupSelected, ungroupSelected]);
+  }, [selectedNodeIds, selectedConnectionId, deleteNode, deleteNodes, deleteConnection, undo, redo, setSelectedNodeIds, resetConnectionDrag, activeTool, addNode, copyNodes, pasteNodes, groupSelected, ungroupSelected]);
 
   // Compute marquee box in screen coords for the overlay
   const marqueeStyle = selectionBox ? (() => {
@@ -1301,7 +1302,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
         nodes={nodes}
         offset={offset}
         zoom={zoom}
-        onUpdateNode={updateNode}
+        onApplyUpdates={applyNodeUpdates}
       />
     </div>
   );

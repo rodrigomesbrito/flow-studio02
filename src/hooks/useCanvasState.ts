@@ -179,6 +179,16 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
     setSelectedNodeIds(new Set());
   }, [commitState]);
 
+  const applyNodeUpdates = useCallback((updates: Array<{ id: string; updates: Partial<CanvasNode> }>, options: CanvasHistoryOptions = { history: 'push' }) => {
+    if (updates.length === 0) return;
+    const updatesMap = new Map(updates.map((item) => [item.id, item.updates]));
+    const nextNodes = nodesRef.current.map((node) => {
+      const nextUpdates = updatesMap.get(node.id);
+      return nextUpdates ? { ...node, ...nextUpdates } : node;
+    });
+    commitState(nextNodes, connectionsRef.current, options);
+  }, [commitState]);
+
   const duplicateNode = useCallback((id: string, options: CanvasHistoryOptions = { history: 'push' }) => {
     const node = nodesRef.current.find((item) => item.id === id);
     if (!node) return;
@@ -413,6 +423,7 @@ export function useCanvasState(onDataChange?: (nodes: CanvasNode[], connections:
     updateNode,
     deleteNode,
     deleteNodes,
+    applyNodeUpdates,
     duplicateNode,
     duplicateNodes,
     copyNodes,
