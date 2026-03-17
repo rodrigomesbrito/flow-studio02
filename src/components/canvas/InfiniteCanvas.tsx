@@ -761,6 +761,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
 
     const handleWindowMouseMove = (e: MouseEvent) => handleMouseMove(e.clientX, e.clientY);
     const handleWindowMouseUp = (e: MouseEvent) => {
+      if (draggingNodeId) endHistoryAction();
       setIsPanning(false);
       setDraggingNodeId(null);
       setAlignmentGuides([]);
