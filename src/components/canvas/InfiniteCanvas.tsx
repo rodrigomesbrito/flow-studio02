@@ -637,7 +637,7 @@ export function InfiniteCanvas({ canvasId }: InfiniteCanvasProps) {
         nodeStartPositions.current.forEach((startPos, nodeId) => {
           updateNode(nodeId, {
             position: { x: startPos.x + snapDx, y: startPos.y + snapDy }
-          });
+          }, { history: 'none' });
         });
 
         setAlignmentGuides(guides);
